@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<descTool>
+    <toolOptions>
+        <runGUI>1</runGUI>
+        <workspace>/media/psf/Home/ti/usb_desc_cdc_bridge</workspace>
+        <projectName>n/a</projectName>
+    </toolOptions>
+    <toolConfig>
+        <treeConfig>
+            <MSP mcuFam="0">
+                <mspConfig>
+                    <disableXtalOnSus>1</disableXtalOnSus>
+                    <XT2OscFreq>14</XT2OscFreq>
+                    <DMAChannel>1</DMAChannel>
+                    <bypassXT2>0</bypassXT2>
+                    <useSYSBIOS>0</useSYSBIOS>
+                    <driveVBUSfromExtSupp>0</driveVBUSfromExtSupp>
+                </mspConfig>
+                <USBDevice>
+                    <deviceProp>
+                        <vid>0x2047</vid>
+                        <pid>0x03EE</pid>
+                        <vndStr>TI Demo VID/PID</vndStr>
+                        <prodStr>USB UART Bridge</prodStr>
+                        <devRelNum>0x200</devRelNum>
+                        <useSerNum>1</useSerNum>
+                    </deviceProp>
+                    <config>
+                        <configParam>
+                            <selfPowered>0</selfPowered>
+                            <remWkupSup>0</remWkupSup>
+                            <maxPowDrain>200</maxPowDrain>
+                            <configStr>UART USB Bridge</configStr>
+                        </configParam>
+                        <interfaces>
+                            <cdcInterface intString="Virtual COM Port (CDC)"/>
+                        </interfaces>
+                    </config>
+                </USBDevice>
+            </MSP>
+        </treeConfig>
+    </toolConfig>
+    <codeGeneration generate="0" generateINF="0"/>
+</descTool>
