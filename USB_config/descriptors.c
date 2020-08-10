@@ -118,7 +118,7 @@ const struct abromConfigurationDescriptorGroup abromConfigurationDescriptorGroup
         0x04,                                // bFunctionLength
         0x24,                                // bDescriptorType: CS_INTERFACE
         0x02,                                // bDescriptorSubtype: Abstract Control Management desc
-        0x02,                                // bmCapabilities
+        0x06,                                // bmCapabilities
 
         // Union Functional Descriptor
         0x05,                               // Size, in bytes
@@ -278,7 +278,16 @@ const tDEVICE_REQUEST_COMPARE tUsbRequestList[] =
         CDC0_COMM_INTERFACE,0x00,                 // CDC interface is 0
         0x00,0x00,                                 // No further data
         0xcf,&usbSetControlLineState,
-        },
+    },
+    {
+        // SEND BREAK
+        USB_REQ_TYPE_OUTPUT | USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
+        USB_CDC_SEND_BREAK,
+        0x00,0x00,                                 // always zero
+        CDC0_COMM_INTERFACE,0x00,                 // CDC interface is 0
+        0x00,0x00,                                 // No further data
+        0xcf,&usbSendBreak,
+    },
 
 
     {

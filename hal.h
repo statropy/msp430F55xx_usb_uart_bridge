@@ -46,8 +46,49 @@
 #define UCA_BRIDGE_IV UCA1IV
 #endif
 
-
+//*****************************************************************************
+//
+//! Initializes pins and clocks.
+//!
+//! \param mclkFreq is the desired main clock frequency.
+//
+//*****************************************************************************
 void hal_init(uint32_t mclkFreq);
 
+//*****************************************************************************
+//
+//! Control the external BOOT line.
+//!
+//! \param active is bool, TRUE makes BOOT active.
+//!
+//!  Mimic open-drain operation, active low
+//!  Drive low for boot mode, Input for normal
+//
+//*****************************************************************************
+void hal_ext_boot(uint8_t active);
+
+//*****************************************************************************
+//
+//! Control the external RESET line.
+//!
+//! \param active is bool, TRUE in reset.
+//!
+//!  Mimic open-drain operation, active low
+//!  Drive low for reset, Input for normal
+//
+//*****************************************************************************
+void hal_ext_reset(uint8_t active);
+
+//*****************************************************************************
+//
+//! Control the UART connection.
+//!
+//! \param active is bool, TRUE to connect UART to external chip.
+//!
+//!  Active high
+//!  Drive high for UART, low to disconnect
+//
+//*****************************************************************************
+void hal_ext_uart(uint8_t active);
 
 #endif /* HAL_H_ */

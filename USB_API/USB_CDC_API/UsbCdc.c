@@ -857,6 +857,15 @@ uint8_t Handler_SetLineCoding (void)
     return (bWakeUp);
 }
 
+uint8_t usbSendBreak (void)
+{
+    uint8_t bWakeUp;
+    bWakeUp = USBCDC_handleBreak((uint8_t)tSetupPacket.wIndex, tSetupPacket.wValue == 0xFFFF);
+    usbSendZeroLengthPacketOnIEP0();
+
+    return (bWakeUp);
+}
+
 #endif  //ifdef _CDC_
 
 
