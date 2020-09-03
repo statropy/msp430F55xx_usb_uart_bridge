@@ -103,12 +103,6 @@
 #define TIMER_CCTL_CM       CM_1
 #define TIMER_CCR           TA1R
 
-
-#if defined(__TI_COMPILER_VERSION__)  || defined(__GNUC__)
-#define __no_init
-#define __data16
-#endif
-
 /*----------------------------------------------------------------------------+
  | Internal Variables                                                          |
  +----------------------------------------------------------------------------*/

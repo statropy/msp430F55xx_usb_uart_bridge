@@ -61,7 +61,8 @@ volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler t
                                                // received by USB
                                                // 0x01 for SET, 0x02 for CLEAR
 
-#define BUFFER_SIZE 1024
+//#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 64
 static uint8_t usbRxBuffer[BUFFER_SIZE];
 static uint8_t usbTxBuffer[BUFFER_SIZE];
 static uint8_t uartRingBuffer[BUFFER_SIZE];
@@ -187,8 +188,14 @@ int main(void)
 /*
  * ======== UNMI_ISR ========
  */
+#if defined(__TI_COMPILER_VERSION__)
 #pragma vector = UNMI_VECTOR
 __interrupt void UNMI_ISR (void)
+#elif defined(__GNUC__)
+void __attribute__((interrupt(UNMI_VECTOR))) UNMI_ISR (void)
+#else
+#error Compiler not supported
+#endif
 {
     switch (__even_in_range(SYSUNIV, SYSUNIV_BUSIFG ))
     {
@@ -217,13 +224,23 @@ __interrupt void UNMI_ISR (void)
     }
 }
 
+#if defined(__TI_COMPILER_VERSION__)
 #if defined (BRIDGE_UART0)
 #pragma vector=USCI_A0_VECTOR
 #else
 #pragma vector=USCI_A1_VECTOR
 #endif
-__interrupt
-void USCI_BRIDGE_ISR (void)
+__interrupt void 
+#elif defined(__GNUC__)
+  #if defined (BRIDGE_UART0)
+void __attribute__((interrupt(USCI_A0_VECTOR)))
+  #else
+void __attribute__((interrupt(USCI_A1_VECTOR))) 
+  #endif
+#else
+#error Compiler not supported
+#endif
+USCI_BRIDGE_ISR (void)
 {
     uint8_t rx = 0;
     uint8_t flags = 0;
