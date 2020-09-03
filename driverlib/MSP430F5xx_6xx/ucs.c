@@ -115,7 +115,7 @@ static uint32_t privateUCSSourceClockFromDCO(uint16_t FLLRefCLKSource)
     uint16_t D_value = 1;
     uint16_t N_value;
     uint16_t n_value = 1;
-    uint32_t Fref_value;
+    uint32_t Fref_value = 0;
     uint8_t i;
 
     N_value = (HWREG16(UCS_BASE + OFS_UCSCTL2)) & 0x03FF;
@@ -212,7 +212,7 @@ static uint32_t privateUCSSourceClockFromDCO(uint16_t FLLRefCLKSource)
 static uint32_t privateUCSComputeCLKFrequency(uint16_t CLKSource,
                                               uint16_t CLKSourceDivider)
 {
-    uint32_t CLKFrequency;
+    uint32_t CLKFrequency = 0;
     uint8_t CLKSourceFrequencyDivider = 1;
     uint8_t i = 0;
 
@@ -330,7 +330,7 @@ void UCS_initClockSignal(uint8_t selectedClockSignal,
         HWREG16(UCS_BASE + OFS_UCSCTL4) |= (clockSource);
 
         clockSourceDivider = clockSourceDivider << 8;
-        HWREG16(UCS_BASE + OFS_UCSCTL5) = temp & ~(DIVA_7) | clockSourceDivider;
+        HWREG16(UCS_BASE + OFS_UCSCTL5) = (temp & ~(DIVA_7)) | clockSourceDivider;
         break;
     case UCS_SMCLK:
         HWREG16(UCS_BASE + OFS_UCSCTL4) &= ~(SELS_7);
@@ -338,13 +338,13 @@ void UCS_initClockSignal(uint8_t selectedClockSignal,
         HWREG16(UCS_BASE + OFS_UCSCTL4) |= (clockSource);
 
         clockSourceDivider = clockSourceDivider << 4;
-        HWREG16(UCS_BASE + OFS_UCSCTL5) = temp & ~(DIVS_7) | clockSourceDivider;
+        HWREG16(UCS_BASE + OFS_UCSCTL5) = (temp & ~(DIVS_7)) | clockSourceDivider;
         break;
     case UCS_MCLK:
         HWREG16(UCS_BASE + OFS_UCSCTL4) &= ~(SELM_7);
         HWREG16(UCS_BASE + OFS_UCSCTL4) |= (clockSource);
 
-        HWREG16(UCS_BASE + OFS_UCSCTL5) = temp & ~(DIVM_7) | clockSourceDivider;
+        HWREG16(UCS_BASE + OFS_UCSCTL5) = (temp & ~(DIVM_7)) | clockSourceDivider;
         break;
     case UCS_FLLREF:
         assert(clockSource <= SELA_5);
@@ -360,15 +360,15 @@ void UCS_initClockSignal(uint8_t selectedClockSignal,
         {
         case UCS_CLOCK_DIVIDER_12:
             HWREG8(UCS_BASE +
-                   OFS_UCSCTL3) = temp & ~(FLLREFDIV_7) | FLLREFDIV__12;
+                   OFS_UCSCTL3) = (temp & ~(FLLREFDIV_7)) | FLLREFDIV__12;
             break;
         case UCS_CLOCK_DIVIDER_16:
             HWREG8(UCS_BASE +
-                   OFS_UCSCTL3) = temp & ~(FLLREFDIV_7) | FLLREFDIV__16;
+                   OFS_UCSCTL3) = (temp & ~(FLLREFDIV_7)) | FLLREFDIV__16;
             break;
         default:
             HWREG8(UCS_BASE +
-                   OFS_UCSCTL3) = temp & ~(FLLREFDIV_7) | clockSourceDivider;
+                   OFS_UCSCTL3) = (temp & ~(FLLREFDIV_7)) | clockSourceDivider;
             break;
         }
 

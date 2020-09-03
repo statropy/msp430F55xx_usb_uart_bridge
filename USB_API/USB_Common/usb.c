@@ -897,7 +897,6 @@ uint8_t USB_forceRemoteWakeup ()
         return (USB_NOT_SUSPENDED);
     }
     if (bRemoteWakeup == ENABLE){
-        volatile uint16_t i;
         USBCTL |= RWUP;                                                             //USB - Device Remote Wakeup Request - this bit
                                                                                     //is self-cleaned
         return (USB_SUCCEED);
@@ -1732,7 +1731,7 @@ uint16_t USB_determineFreq(void){
         else if (currentFLLREFDIV == 4) {
             freq = currentFLLN * (FLLRefFreq / 12);
         }
-        else if (currentFLLREFDIV == 5) {
+        else {
             freq = currentFLLN * (FLLRefFreq / 16);
         }
     }

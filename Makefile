@@ -55,10 +55,13 @@ CC      = $(GCC_DIR)/msp430-elf-gcc
 GDB     = $(GCC_DIR)/msp430-elf-gdb
 OBJCOPY = $(GCC_DIR)/msp430-elf-objcopy
 
-CFLAGS = $(INCLUDES) -mmcu=$(DEVICE) -Os -Wall -g0 -mlarge -mcode-region=either -mdata-region=lower -mhwmult=f5series -gdwarf-3 -gstrict-dwarf
-LFLAGS = -L $(SUPPORT_FILE_DIRECTORY) -Wl,-Map,$(MAP),--gc-sections -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5503.ld" -T"./USB_API/msp430USB.cmd"
-CFLAGS_LP = $(INCLUDES) -mmcu=$(DEVICE_LP) -Os -Wall -g0 -mlarge -mcode-region=either -mdata-region=lower -mhwmult=f5series -gdwarf-3 -gstrict-dwarf -DBRIDGE_UART0 -DLAUNCHPAD
-LFLAGS_LP = -L $(SUPPORT_FILE_DIRECTORY) -Wl,-Map,$(MAP_LP),--gc-sections -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5529.ld" -T"./USB_API/msp430USB.cmd"
+#-Wno-int-to-pointer-cast
+CFLAGS_COMMON = $(INCLUDES) -Os -Wall -g0 -mlarge -mcode-region=none -mhwmult=f5series -gdwarf-3 -gstrict-dwarf -std=c99 #-Wno-int-to-pointer-cast -Wno-pointer-to-int-cast 
+LFLAGS_COMMON = -L $(SUPPORT_FILE_DIRECTORY) -Wl,--gc-sections -T"./USB_API/msp430USB.cmd"
+CFLAGS = $(CFLAGS_COMMON) -mmcu=$(DEVICE)
+LFLAGS = $(LFLAGS_COMMON) -Wl,-Map,$(MAP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5503.ld" 
+CFLAGS_LP = $(CFLAGS_COMMON) -mmcu=$(DEVICE_LP) -DBRIDGE_UART0 -DLAUNCHPAD
+LFLAGS_LP = $(LFLAGS_COMMON) -Wl,-Map,$(MAP_LP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5529.ld"
 
 OBJS= $(patsubst %.o,$(OUTDIR)/%.o,$(OBJECTS))
 OBJS_LP= $(patsubst %.o,$(OUTDIR_LP)/%.o,$(OBJECTS))
