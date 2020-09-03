@@ -288,7 +288,7 @@ uint16_t USBCDC_receiveDataInBuffer (uint8_t* dataBuf, uint16_t size, uint8_t in
 	uint16_t rxCount = 0;
     uint8_t* currentPos = dataBuf;
 
-    while (bytesInBuf = USBCDC_getBytesInUSBBuffer(intfNum)){
+    while ( (bytesInBuf = USBCDC_getBytesInUSBBuffer(intfNum)) ){
         if ((uint16_t)(currentPos - dataBuf + bytesInBuf) <= size){
             rxCount = bytesInBuf;
 			USBCDC_receiveData(currentPos,rxCount,intfNum);

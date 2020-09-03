@@ -66,11 +66,11 @@
 //
 //*****************************************************************************
 #define HWREG32(x)                                                              \
-    (*((volatile uint32_t *)((uint16_t)x)))
+    (*((volatile uint32_t *)((uintptr_t)x)))
 #define HWREG16(x)                                                             \
-    (*((volatile uint16_t *)((uint16_t)x)))
+    (*((volatile uint16_t *)((uintptr_t)x)))
 #define HWREG8(x)                                                             \
-    (*((volatile uint8_t *)((uint16_t)x)))
+    (*((volatile uint8_t *)((uintptr_t)x)))
 
 #endif // #ifndef __HW_MEMMAP__
 //Released_Version_5_20_06_02

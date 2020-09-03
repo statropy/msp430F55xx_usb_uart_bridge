@@ -103,12 +103,6 @@
 #define TIMER_CCTL_CM       CM_1
 #define TIMER_CCR           TA1R
 
-
-#if defined(__TI_COMPILER_VERSION__)  || defined(__GNUC__)
-#define __no_init
-#define __data16
-#endif
-
 /*----------------------------------------------------------------------------+
  | Internal Variables                                                          |
  +----------------------------------------------------------------------------*/
@@ -903,7 +897,6 @@ uint8_t USB_forceRemoteWakeup ()
         return (USB_NOT_SUSPENDED);
     }
     if (bRemoteWakeup == ENABLE){
-        volatile uint16_t i;
         USBCTL |= RWUP;                                                             //USB - Device Remote Wakeup Request - this bit
                                                                                     //is self-cleaned
         return (USB_SUCCEED);
@@ -1738,7 +1731,7 @@ uint16_t USB_determineFreq(void){
         else if (currentFLLREFDIV == 4) {
             freq = currentFLLN * (FLLRefFreq / 12);
         }
-        else if (currentFLLREFDIV == 5) {
+        else {
             freq = currentFLLN * (FLLRefFreq / 16);
         }
     }
