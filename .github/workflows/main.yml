@@ -23,7 +23,8 @@ jobs:
       - name: Install msp430-gcc
         run: |
           wget "http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSPGCC/9_2_0_0/export/msp430-gcc-full-linux-x64-installer-9.2.0.0.run"
-          ./msp430-gcc-full-linux-x64-installer-9.2.0.0.run  --mode unattended --prefix /opt/msp430-gcc
+          chmod +x ./msp430-gcc-full-linux-x64-installer-9.2.0.0.run
+          sudo ./msp430-gcc-full-linux-x64-installer-9.2.0.0.run  --mode unattended --prefix /opt/msp430-gcc
           rm -f ./msp430-gcc-full-linux-x64-installer-9.2.0.0.run
           /opt/msp430-gcc/bin/msp430-elf-gcc --version
 
