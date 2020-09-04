@@ -34,6 +34,14 @@
  */
 #include <msp430.h>
 
+#ifndef __data16
+#define __data16
+#endif
+
+#ifndef __no_init
+#define __no_init
+#endif
+
 #if defined (__MSP430F6659__) || defined (__MSP430F6658__) || \
     defined (__MSP430F5659__) || \
     defined (__MSP430F5658__)

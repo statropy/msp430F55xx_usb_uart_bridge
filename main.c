@@ -56,18 +56,21 @@
 volatile uint8_t bCDCDataReceived_event = FALSE;  // Flag set by event handler to
                                                // indicate data has been
                                                // received into USB buffer
-#define BUFFER_SIZE 1024
-uint8_t usbRxBuffer[BUFFER_SIZE];
-uint8_t usbTxBuffer[BUFFER_SIZE];
-uint8_t uartRingBuffer[BUFFER_SIZE];
-ringbuf_t uartRing;
+volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler to
+                                               // indicate break has been
+                                               // received by USB
+                                               // 0x01 for SET, 0x02 for CLEAR
 
-volatile uint8_t usbError = 0;
-volatile uint8_t uartError = 0;
-volatile uint16_t uartRxOverflow = 0;
+//#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 64
+static uint8_t usbRxBuffer[BUFFER_SIZE];
+static uint8_t usbTxBuffer[BUFFER_SIZE];
+static uint8_t uartRingBuffer[BUFFER_SIZE];
+static ringbuf_t uartRing;
 
-uint8_t uart1RingBuffer[BUFFER_SIZE];
-ringbuf_t uart1Ring;
+static volatile uint8_t usbError = 0;
+static volatile uint8_t uartError = 0;
+static volatile uint16_t uartRxOverflow = 0;
 
 int main(void)
 {
@@ -107,10 +110,6 @@ int main(void)
     //Enable Receive Interrupt
     USCI_A_UART_clearInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
 
-#ifdef __MSP430F5529__
-    GPIO_setOutputHighOnPin(GPIO_PORT_P4,GPIO_PIN7);
-#endif
-
     __enable_interrupt();  // Enable interrupts globally
 
     while (1)
@@ -119,16 +118,27 @@ int main(void)
         uint16_t count;
         uint16_t bytesSent, bytesReceived;
 
-#ifdef __MSP430F5529__
-        if(usbError || uartError || uartRxOverflow) {
-            GPIO_setOutputHighOnPin(GPIO_PORT_P1,GPIO_PIN0);
+
+        if(bCDCBreak_event == 3) {
+            //Break Set/Cleared, jump to BSL
+//            __disable_interrupt(); // disable interrupts
+//            ((void ( * )())0x1000)(); // jump to BSL
+
+            //Reset CC1352R into BSL mode
+            bCDCBreak_event = 0;
+            hal_ext_reset(TRUE);
+            hal_ext_boot(TRUE);
+            __delay_cycles(2000);
+            hal_ext_reset(FALSE);
+            __delay_cycles(60000);
+            hal_ext_boot(FALSE);
         }
-#endif
 
         switch (USB_getConnectionState())
         {
             case ST_ENUM_ACTIVE:
-                USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+                hal_ext_uart(TRUE);
+//                USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
 
 
                 if (bCDCDataReceived_event){
@@ -156,14 +166,21 @@ int main(void)
             case ST_ENUM_SUSPENDED:
             case ST_PHYS_CONNECTED_NOENUM_SUSP:
                 //Deep sleep until active
-                USCI_A_UART_disableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+//                USCI_A_UART_disableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+                hal_ext_uart(FALSE);
+//                hal_ext_boot(FALSE);
+//                hal_ext_reset(FALSE);
                 RINGBUF_flush(&uartRing);
                 __bis_SR_register(LPM3_bits + GIE);
                 _NOP();
                 break;
 
             case ST_ENUM_IN_PROGRESS:
-            default:;
+            default:
+//                hal_ext_uart(FALSE);
+//                hal_ext_boot(FALSE);
+//                hal_ext_reset(FALSE);
+                break;
         }
     }
 }
@@ -171,8 +188,14 @@ int main(void)
 /*
  * ======== UNMI_ISR ========
  */
+#if defined(__TI_COMPILER_VERSION__)
 #pragma vector = UNMI_VECTOR
 __interrupt void UNMI_ISR (void)
+#elif defined(__GNUC__)
+void __attribute__((interrupt(UNMI_VECTOR))) UNMI_ISR (void)
+#else
+#error Compiler not supported
+#endif
 {
     switch (__even_in_range(SYSUNIV, SYSUNIV_BUSIFG ))
     {
@@ -201,13 +224,23 @@ __interrupt void UNMI_ISR (void)
     }
 }
 
+#if defined(__TI_COMPILER_VERSION__)
 #if defined (BRIDGE_UART0)
 #pragma vector=USCI_A0_VECTOR
 #else
 #pragma vector=USCI_A1_VECTOR
 #endif
-__interrupt
-void USCI_BRIDGE_ISR (void)
+__interrupt void 
+#elif defined(__GNUC__)
+  #if defined (BRIDGE_UART0)
+void __attribute__((interrupt(USCI_A0_VECTOR)))
+  #else
+void __attribute__((interrupt(USCI_A1_VECTOR))) 
+  #endif
+#else
+#error Compiler not supported
+#endif
+USCI_BRIDGE_ISR (void)
 {
     uint8_t rx = 0;
     uint8_t flags = 0;

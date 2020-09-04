@@ -40,34 +40,63 @@
 
 #include "hal.h"
 
-
 void hal_init(uint32_t mclkFreq)
 {
-    //Unused pins, low power state
-    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_setAsOutputPin(   GPIO_PORT_P1, GPIO_PIN0);
+#ifdef LAUNCHPAD
+    //Ignore unused pins, don't care about low power state for Launchpad
 
-    //GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
-    //GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN0);
+//    //CC1352R RESET_N P2.0 - Default as input, set output low for reset operation
+//    //CC1352R BOOT_N  P2.2 - Default as input, set output low for boot operation
+//    GPIO_setAsInputPin(    GPIO_PORT_P2, GPIO_PIN0|GPIO_PIN2);
+//    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0|GPIO_PIN2);
 
-    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3|GPIO_PIN6|GPIO_PIN7);
-    GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3|GPIO_PIN6|GPIO_PIN7);
+    //Need pull-up on BOOT pin to prevent inadvertent BSL entry, not needed on target board
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P2, GPIO_PIN0|GPIO_PIN2);
 
-    GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3|GPIO_PIN4|GPIO_PIN5);
-    GPIO_setAsOutputPin(   GPIO_PORT_P5, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3|GPIO_PIN4|GPIO_PIN5);
-
-    GPIO_setOutputLowOnPin(GPIO_PORT_P6, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
-    GPIO_setAsOutputPin(   GPIO_PORT_P6, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
-
-    GPIO_setOutputLowOnPin(GPIO_PORT_PJ, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
-    GPIO_setAsOutputPin(   GPIO_PORT_PJ, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
-
+    //CC1352R UART
 #if defined (BRIDGE_UART0)
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN3 | GPIO_PIN4);
 #else
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN4 | GPIO_PIN5);
 #endif
 
+    //CC1352R UART CTRL - default disconnected, HIGH to connect (LED Emulated)
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN5);
+    GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN5);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_setAsOutputPin(   GPIO_PORT_P1, GPIO_PIN0);
+
+#else
+    //Unused pins, low power state
+    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setAsOutputPin(   GPIO_PORT_P1, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setOutputLowOnPin(GPIO_PORT_PJ, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setAsOutputPin(   GPIO_PORT_PJ, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P6, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+    GPIO_setAsOutputPin(   GPIO_PORT_P6, GPIO_PIN0|GPIO_PIN1|GPIO_PIN2|GPIO_PIN3);
+
+    //SPI, Not used by MSP430
+    GPIO_setAsInputPin(GPIO_PORT_P1, GPIO_PIN4|GPIO_PIN5|GPIO_PIN6|GPIO_PIN7);
+
+    //CC1352R RESET_N - Default as input, set output low for reset operation
+    GPIO_setAsInputPin(    GPIO_PORT_P2, GPIO_PIN0);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+
+    //CC1352R UART
+    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P4, GPIO_PIN4 | GPIO_PIN5);
+
+    //CC1352R BOOT_N - Default as input, set output low for boot operation
+    GPIO_setAsInputPin(    GPIO_PORT_P4, GPIO_PIN7);
+
+    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN6|GPIO_PIN7);
+
+    //CC1352R UART CTRL - default disconnected, HIGH to connect
+    GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN6);
+
+
+#endif //LAUNCHPAD
     UCS_initClockSignal(
        UCS_FLLREF,
        UCS_REFOCLK_SELECT,
@@ -82,3 +111,68 @@ void hal_init(uint32_t mclkFreq)
         mclkFreq/1000,
         mclkFreq/32768);
 }
+
+#ifdef LAUNCHPAD
+void hal_ext_boot(uint8_t active)
+{
+    if(active) {
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN2);
+        GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN2);
+    } else {
+        GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P2, GPIO_PIN2);
+    }
+}
+
+void hal_ext_reset(uint8_t active)
+{
+    if(active) {
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+        GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN0);
+
+    } else {
+        GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_P2, GPIO_PIN0);
+    }
+}
+
+void hal_ext_uart(uint8_t active)
+{
+    if(active) {
+        GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN5);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
+
+        USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+    } else {
+        GPIO_setOutputLowOnPin( GPIO_PORT_P2, GPIO_PIN5);
+        GPIO_setOutputLowOnPin( GPIO_PORT_P1, GPIO_PIN0);
+
+        USCI_A_UART_disableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+    }
+}
+#else
+void hal_ext_boot(uint8_t active)
+{
+    if(active) {
+        GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN7);
+    } else {
+        GPIO_setAsInputPin(    GPIO_PORT_P4, GPIO_PIN7);
+    }
+}
+
+void hal_ext_reset(uint8_t active)
+{
+    if(active) {
+        GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN0);
+    } else {
+        GPIO_setAsInputPin(    GPIO_PORT_P2, GPIO_PIN0);
+    }
+}
+
+void hal_ext_uart(uint8_t active)
+{
+    if(active) {
+        GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
+    } else {
+        GPIO_setOutputLowOnPin( GPIO_PORT_P4, GPIO_PIN6);
+    }
+}
+#endif //LAUNCHPAD

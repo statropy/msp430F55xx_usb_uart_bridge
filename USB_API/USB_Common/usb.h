@@ -40,13 +40,13 @@ extern "C"
 {
 #endif
 
+
+#include "device.h"
+
+
 /*----------------------------------------------------------------------------+
  | Constant Definition                                                         |
  +----------------------------------------------------------------------------*/
-#if defined(__TI_COMPILER_VERSION__)  || defined(__GNUC__)
-#define __no_init
-#define __data16
-#endif
 
 /*----------------------------------------------------------------------------
  * The following macro names and function names are deprecated.  These were 
@@ -123,6 +123,7 @@ extern "C"
 #define USB_CDC_GET_LINE_CODING         0x21
 #define USB_CDC_SET_LINE_CODING         0x20
 #define USB_CDC_SET_CONTROL_LINE_STATE  0x22
+#define USB_CDC_SEND_BREAK              0x23
 
 //HID CLASS Requests
 #define USB_HID_REQ                     0x81
