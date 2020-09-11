@@ -7,6 +7,7 @@ driverlib/MSP430F5xx_6xx/tlv.o \
 driverlib/MSP430F5xx_6xx/ucs.o \
 driverlib/MSP430F5xx_6xx/usci_a_uart.o \
 USB_API/USB_CDC_API/UsbCdc.o \
+USB_API/USB_WPAN_API/UsbWpan.o \
 USB_API/USB_Common/usb.o \
 USB_API/USB_Common/usbdma.o \
 USB_app/usbConstructs.o \
@@ -55,8 +56,7 @@ CC      = $(GCC_DIR)/msp430-elf-gcc
 GDB     = $(GCC_DIR)/msp430-elf-gdb
 OBJCOPY = $(GCC_DIR)/msp430-elf-objcopy
 
-#-Wno-int-to-pointer-cast
-CFLAGS_COMMON = $(INCLUDES) -Os -Wall -g0 -mlarge -mcode-region=none -mhwmult=f5series -gdwarf-3 -gstrict-dwarf -std=c99 #-Wno-int-to-pointer-cast -Wno-pointer-to-int-cast 
+CFLAGS_COMMON = $(INCLUDES) -Os -Wall -g0 -mlarge -mcode-region=none -mhwmult=f5series -gdwarf-3 -gstrict-dwarf -std=c99 
 LFLAGS_COMMON = -L $(SUPPORT_FILE_DIRECTORY) -Wl,--gc-sections -T"./USB_API/msp430USB.cmd"
 CFLAGS = $(CFLAGS_COMMON) -mmcu=$(DEVICE)
 LFLAGS = $(LFLAGS_COMMON) -Wl,-Map,$(MAP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5503.ld" 

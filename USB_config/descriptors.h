@@ -52,7 +52,9 @@ extern "C"
 //***********************************************************************************************
 // CDC or HID - Define both for composite support
 //***********************************************************************************************
-#define _CDC_          // Needed for CDC inteface
+#define _CDC_          // Needed for CDC interface
+#define _VENDOR_       // Needed for Vendor-specific requests (WPAN)
+#define _WPAN_         // Needed for WPAN interface
 
 //***********************************************************************************************
 // CONFIGURATION CONSTANTS

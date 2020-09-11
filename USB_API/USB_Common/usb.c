@@ -62,6 +62,10 @@
 #include "../USB_MSC_API/UsbMscScsi.h"
 #endif
 
+#ifdef _WPAN_
+#include "../USB_WPAN_API/UsbWpan.h"
+#endif
+
 #include "../USB_Common/UsbIsr.h"
 
 
@@ -1586,6 +1590,13 @@ uint8_t usbDecodeAndProcessUsbRequest (void)
     ptDEVICE_REQUEST ptSetupPacket = &tSetupPacket;
     uint8_t bRequestType,bRequest;
     tpF lAddrOfFunction;
+
+#ifdef _VENDOR_
+    //skip the matrix and handle vendor commands directly
+    if(tSetupPacket.bmRequestType == (USB_REQ_TYPE_OUTPUT | USB_REQ_TYPE_VENDOR | USB_REQ_TYPE_DEVICE)) {
+        return usbvendorOutputRequest(); 
+    }
+#endif
 
     //point to beginning of the matrix
     pbUsbRequestList = (uint8_t*)&tUsbRequestList[0];
