@@ -39,6 +39,36 @@ ifeq ($(OS),Windows_NT)
 else
 	RM= rm -rf
 	MKDIR = mkdir -p
+	# works on both Linux and macOs but "echo" by itself does not escape in Linux
+	ECHO = echo -e
+
+	# this environment variable is rarely set by default on Linux machines
+	ifeq (,$(PYTHON2))
+		PYTHON2 = $(shell which python2)
+	endif
+	ifeq (,$(PYTHON2))
+		$(error Please set the PYTHON2 environment variable to the path to the python2 executable)
+	endif
+
+	ifeq (,$(MSP430_TOOLCHAIN_PATH))
+		ifneq (,$(shell which msp430-elf-gcc))
+			# get MSP430_TOOLCHAIN_PATH from msp430-elf-gcc itself
+			MSP430_TOOLCHAIN_PATH = \
+				$(shell dirname \
+					$(shell dirname \
+						$(shell dirname \
+							$(shell realpath \
+								$(shell msp430-elf-gcc --print-file-name libc.a)\
+							)\
+						)\
+					)\
+				)
+		endif
+	endif
+
+	ifeq (,$(MSP430_TOOLCHAIN_PATH))
+		$(error Please install the MSP430 toolchain and set the MSP430_TOOLCHAIN_PATH environment variable)
+	endif
 endif
 
 GCC_DIR = $(MSP430_TOOLCHAIN_PATH)/bin
@@ -81,16 +111,16 @@ clean:
 	$(RM) $(OUTFILE_LP)
 	$(RM) $(OUTHEX)
 	$(RM) $(OUTHEX_LP)
-	@echo "\e[1;34mFinished clean\e[0m"
+	@$(ECHO) "\e[1;34mFinished clean\e[0m"
 	
 debug: $(OUTHEX)
-	@echo "\e[1;34mStarting GDB\e[0m"
-	@echo $(GDB)
+	@$(ECHO) "\e[1;34mStarting GDB\e[0m"
+	@$(ECHO) $(GDB)
 	$(GDB) $(OUTFILE)
 
 debug_launchpad: $(OUTHEX_LP)
-	@echo "\e[1;34mStarting GDB\e[0m"
-	@echo $(GDB)
+	@$(ECHO) "\e[1;34mStarting GDB\e[0m"
+	@$(ECHO) $(GDB)
 	$(GDB) $(OUTFILE_LP)
 
 program: $(OUTHEX)
@@ -109,14 +139,14 @@ $(OUTDIR_LP)/%.o : %.c
 
 %.hex: %.out
 	$(OBJCOPY) -O ihex $< $@
-	@echo "\e[1;34m$@ completed\e[0m"
+	@$(ECHO) "\e[1;34m$@ completed\e[0m"
 
 $(OUTFILE): ${OBJS}
-	@echo "\e[1;34mLinking $@\e[0m"
+	@$(ECHO) "\e[1;34mLinking $@\e[0m"
 	$(CC) $(CFLAGS) $(LFLAGS) $? -o $(OUTFILE)
 
 $(OUTFILE_LP): ${OBJS_LP}
-	@echo "\e[1;34mLinking $@\e[0m"
+	@$(ECHO) "\e[1;34mLinking $@\e[0m"
 	$(CC) $(CFLAGS_LP) $(LFLAGS_LP) $? -o $(OUTFILE_LP)
 
 .PHONY: all target launchpad clean debug debug_launchpad program program_launchpad
