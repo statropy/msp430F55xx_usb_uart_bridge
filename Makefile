@@ -37,22 +37,27 @@ ifeq ($(OS),Windows_NT)
 		MKDIR = mkdir
 	endif
 else
-	SUDO = sudo
+	ifeq ($(shell uname -s), Darwin)
+		SUDO = 
+		ECHO = echo
+	else
+		SUDO = sudo
+		ECHO = echo -e
+	endif
+
 	RM= rm -rf
 	MKDIR = mkdir -p
-	# works on both Linux and macOs but "echo" by itself does not escape in Linux
-	ECHO = echo -e
 
 	# this environment variable is rarely set by default on Linux machines
 	ifeq (,$(PYTHON2))
-		PYTHON2 = $(shell which python2)
+		PYTHON2 = $(shell command -v python2)
 	endif
 	ifeq (,$(PYTHON2))
 		$(error Please set the PYTHON2 environment variable to the path to the python2 executable)
 	endif
 
 	ifeq (,$(MSP430_TOOLCHAIN_PATH))
-		ifneq (,$(shell which msp430-elf-gcc))
+		ifneq (,$(shell command -v msp430-elf-gcc))
 			# get MSP430_TOOLCHAIN_PATH from msp430-elf-gcc itself
 			MSP430_TOOLCHAIN_PATH = \
 				$(shell dirname \
@@ -112,15 +117,15 @@ clean:
 	$(RM) $(OUTFILE_LP)
 	$(RM) $(OUTHEX)
 	$(RM) $(OUTHEX_LP)
-	@$(ECHO) "\e[1;34mFinished clean\e[0m"
+	@$(ECHO) "\x1B[1;34mFinished clean\x1B[0m"
 	
 debug: $(OUTHEX)
-	@$(ECHO) "\e[1;34mStarting GDB\e[0m"
+	@$(ECHO) "\x1B[1;34mStarting GDB\x1B[0m"
 	@$(ECHO) $(GDB)
 	$(GDB) $(OUTFILE)
 
 debug_launchpad: $(OUTHEX_LP)
-	@$(ECHO) "\e[1;34mStarting GDB\e[0m"
+	@$(ECHO) "\x1B[1;34mStarting GDB\x1B[0m"
 	@$(ECHO) $(GDB)
 	$(GDB) $(OUTFILE_LP)
 
@@ -140,14 +145,14 @@ $(OUTDIR_LP)/%.o : %.c
 
 %.hex: %.out
 	$(OBJCOPY) -O ihex $< $@
-	@$(ECHO) "\e[1;34m$@ completed\e[0m"
+	@$(ECHO) "\x1B[1;34m$@ completed\x1B[0m"
 
 $(OUTFILE): ${OBJS}
-	@$(ECHO) "\e[1;34mLinking $@\e[0m"
+	@$(ECHO) "\x1B[1;34mLinking $@\x1B[0m"
 	$(CC) $(CFLAGS) $(LFLAGS) $? -o $(OUTFILE)
 
 $(OUTFILE_LP): ${OBJS_LP}
-	@$(ECHO) "\e[1;34mLinking $@\e[0m"
+	@$(ECHO) "\x1B[1;34mLinking $@\x1B[0m"
 	$(CC) $(CFLAGS_LP) $(LFLAGS_LP) $? -o $(OUTFILE_LP)
 
 .PHONY: all target launchpad clean debug debug_launchpad program program_launchpad
