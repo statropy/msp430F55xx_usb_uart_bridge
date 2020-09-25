@@ -37,6 +37,7 @@ ifeq ($(OS),Windows_NT)
 		MKDIR = mkdir
 	endif
 else
+	SUDO = sudo
 	RM= rm -rf
 	MKDIR = mkdir -p
 endif
@@ -94,10 +95,10 @@ debug_launchpad: $(OUTHEX_LP)
 	$(GDB) $(OUTFILE_LP)
 
 program: $(OUTHEX)
-	$(PYTHON2) -m msp430.bsl5.hid_1 -e -P $(OUTHEX)
+	$(SUDO) $(PYTHON2) -m msp430.bsl5.hid_1 -e -P $(OUTHEX)
 
 program_launchpad: $(OUTHEX_LP)
-	$(PYTHON2) -m msp430.bsl5.hid_1 -e -P $(OUTHEX_LP)
+	$(SUDO) $(PYTHON2) -m msp430.bsl5.hid_1 -e -P $(OUTHEX_LP)
 
 $(OUTDIR)/%.o : %.c
 	@mkdir -p $(@D)
