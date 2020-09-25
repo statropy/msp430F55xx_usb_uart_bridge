@@ -43,6 +43,8 @@
 #include <USB_API/USB_Common/UsbIsr.h>
 #include <string.h>
 #include <USB_API/USB_CDC_API/UsbCdc.h>
+#include <USB_API/USB_WPAN_API/UsbWpan.h>
+
 
 /*----------------------------------------------------------------------------+
 | External Variables                                                          |
@@ -68,6 +70,7 @@ int16_t PHDCToHostFromBuffer(uint8_t);
 int16_t PHDCToBufferFromHost(uint8_t);
 int16_t PHDCIsReceiveInProgress(uint8_t);
 uint16_t USB_determineFreq(void);
+int16_t WpanToHostFromBuffer(uint8_t);
 /*----------------------------------------------------------------------------+
 | General Subroutines                                                         |
 +----------------------------------------------------------------------------*/
@@ -166,6 +169,7 @@ void __attribute__ ((interrupt(USB_UBM_VECTOR))) iUsbInterruptHandler(void)
     case USBVECINT_STPOW_PACKET_RECEIVED:
         break;
 	case USBVECINT_INPUT_ENDPOINT1:
+        bWakeUp = WpanToHostFromBuffer(WPAN0_INTFNUM);
         break;
     case USBVECINT_INPUT_ENDPOINT2:
         //send saved bytes from buffer...
@@ -332,15 +336,20 @@ uint8_t OEP0InterruptHandler(void)
         usbReceiveNextPacketOnOEP0();
         if(bStatusAction == STATUS_ACTION_NOTHING)
         {
-#           ifdef _CDC_
+#ifdef _CDC_
                 if(tSetupPacket.bRequest == USB_CDC_SET_LINE_CODING)
                 {
                     bWakeUp = Handler_SetLineCoding();
                 }
-#          endif
+#endif
 #ifdef _HID_
                 if (tSetupPacket.bRequest == USB_REQ_SET_REPORT) {
                     bWakeUp = USBHID_handleEP0SetReportDataAvailable(tSetupPacket.wIndex);
+                }
+#endif
+#ifdef _VENDOR_
+                if (tSetupPacket.bmRequestType == (USB_REQ_TYPE_OUTPUT | USB_REQ_TYPE_VENDOR | USB_REQ_TYPE_DEVICE)) {
+                    bWakeUp = usbvendorOutputHandler();
                 }
 #endif
           }

@@ -9,3 +9,4 @@ BUILD_LP/
 *.out
 *.map
 *.hex
+*.pyc

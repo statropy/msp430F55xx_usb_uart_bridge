@@ -46,6 +46,7 @@
 #include "USB_API/USB_Common/device.h"
 #include "USB_API/USB_Common/usb.h"
 #include "USB_API/USB_CDC_API/UsbCdc.h"
+#include "USB_API/USB_WPAN_API/UsbWpan.h"
 #include "USB_app/usbConstructs.h"
 
 #include "ringbuf.h"
@@ -62,15 +63,90 @@ volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler t
                                                // 0x01 for SET, 0x02 for CLEAR
 
 //#define BUFFER_SIZE 1024
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 128
+#ifdef PASSTHROUGH_ONLY
 static uint8_t usbRxBuffer[BUFFER_SIZE];
 static uint8_t usbTxBuffer[BUFFER_SIZE];
+#else
+static uint8_t cdcTxBuffer[BUFFER_SIZE];
+static uint8_t wpanTxBuffer[BUFFER_SIZE];
+#endif
+
 static uint8_t uartRingBuffer[BUFFER_SIZE];
 static ringbuf_t uartRing;
 
 static volatile uint8_t usbError = 0;
 static volatile uint8_t uartError = 0;
 static volatile uint16_t uartRxOverflow = 0;
+
+#define ADDRESS_WPAN 0x03
+#define ADDRESS_CDC  0x05
+
+static uint16_t bytesSent, bytesReceived;
+
+#ifndef PASSTHROUGH_ONLY
+void poll_hdlc()
+{
+    static uint8_t inEsc = FALSE;
+    static uint8_t currentAddress = 0xFF;
+    static uint8_t *pCurrentBuffer = NULL;
+    static uint8_t currentOffset = 0;
+
+    while(!RINGBUF_empty(&uartRing)) {
+        if(currentAddress == ADDRESS_WPAN) {
+            if(USBWPAN_getInterfaceStatus(WPAN0_INTFNUM) & USBWPAN_WAITING_FOR_SEND) {
+                return;
+            }
+        } else if(currentAddress == ADDRESS_CDC) {
+            if(USBCDC_getInterfaceStatus(CDC0_INTFNUM,&bytesSent,&bytesReceived) & USBCDC_WAITING_FOR_SEND) {
+                return;
+            }
+        }
+
+        uint8_t c = RINGBUF_pop_unsafe(&uartRing);
+        //TODO: CRC check
+        
+        if(c == HDLC_FRAME) {
+            if(currentOffset > 3) {
+                //CRC Check?
+
+                //end of frame, process if buffer contents
+                if(currentAddress == ADDRESS_WPAN) { //&& has contents
+                    USBWPAN_sendData(wpanTxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
+                } else if(currentAddress == ADDRESS_CDC) {
+                    USBCDC_sendData(cdcTxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
+                } else {
+                    //discard
+                }
+            }
+            currentOffset = 0;
+            currentAddress = 0xFF;
+        } else if(c == HDLC_ESC) {
+            inEsc = TRUE;
+        } else {
+            if(inEsc) {
+                //TODO assert c != HDLC_FRAME
+                c ^= 0x20;
+                inEsc = FALSE;
+            }
+
+            if(currentAddress == 0xFF) {
+                currentAddress = c;
+                if(currentAddress == ADDRESS_WPAN) {
+                    pCurrentBuffer = wpanTxBuffer;
+                } else if(currentAddress == ADDRESS_CDC) {
+                    pCurrentBuffer = cdcTxBuffer;
+                }
+                currentOffset = 0;
+            }  else {
+                //TODO check buffer full
+                pCurrentBuffer[currentOffset] = c;
+                currentOffset++;
+            }
+        }
+    }
+}
+#endif
 
 int main(void)
 {
@@ -112,12 +188,14 @@ int main(void)
 
     __enable_interrupt();  // Enable interrupts globally
 
+    USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
+
     while (1)
     {
+#ifdef PASSTHROUGH_ONLY
         uint8_t sendError;
         uint16_t count;
-        uint16_t bytesSent, bytesReceived;
-
+#endif
 
         if(bCDCBreak_event == 3) {
             //Break Set/Cleared, jump to BSL
@@ -138,9 +216,8 @@ int main(void)
         {
             case ST_ENUM_ACTIVE:
                 hal_ext_uart(TRUE);
-//                USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
 
-
+#ifdef PASSTHROUGH_ONLY
                 if (bCDCDataReceived_event){
                     bCDCDataReceived_event = FALSE;
 
@@ -160,16 +237,15 @@ int main(void)
                         RINGBUF_flush(&uartRing);
                     }
                 }
+#else
+                poll_hdlc();
+#endif
                 break;
 
             case ST_PHYS_DISCONNECTED:
             case ST_ENUM_SUSPENDED:
             case ST_PHYS_CONNECTED_NOENUM_SUSP:
-                //Deep sleep until active
-//                USCI_A_UART_disableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
                 hal_ext_uart(FALSE);
-//                hal_ext_boot(FALSE);
-//                hal_ext_reset(FALSE);
                 RINGBUF_flush(&uartRing);
                 __bis_SR_register(LPM3_bits + GIE);
                 _NOP();
@@ -177,9 +253,6 @@ int main(void)
 
             case ST_ENUM_IN_PROGRESS:
             default:
-//                hal_ext_uart(FALSE);
-//                hal_ext_boot(FALSE);
-//                hal_ext_reset(FALSE);
                 break;
         }
     }

@@ -63,8 +63,14 @@ void hal_init(uint32_t mclkFreq)
     //CC1352R UART CTRL - default disconnected, HIGH to connect (LED Emulated)
     GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN5);
     GPIO_setAsOutputPin(   GPIO_PORT_P2, GPIO_PIN5);
+
+    //DEBUG LED (RED)
     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_setAsOutputPin(   GPIO_PORT_P1, GPIO_PIN0);
+
+    //DEBUG LED (GREEN)
+    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN7);
 
 #else
     //Unused pins, low power state

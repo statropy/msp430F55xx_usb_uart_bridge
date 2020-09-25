@@ -6,6 +6,7 @@ driverlib/MSP430F5xx_6xx/sfr.o \
 driverlib/MSP430F5xx_6xx/tlv.o \
 driverlib/MSP430F5xx_6xx/ucs.o \
 driverlib/MSP430F5xx_6xx/usci_a_uart.o \
+driverlib/MSP430F5xx_6xx/crc.o \
 USB_API/USB_CDC_API/UsbCdc.o \
 USB_API/USB_WPAN_API/UsbWpan.o \
 USB_API/USB_Common/usb.o \
@@ -60,7 +61,7 @@ CFLAGS_COMMON = $(INCLUDES) -Os -Wall -g0 -mlarge -mcode-region=none -mhwmult=f5
 LFLAGS_COMMON = -L $(SUPPORT_FILE_DIRECTORY) -Wl,--gc-sections -T"./USB_API/msp430USB.cmd"
 CFLAGS = $(CFLAGS_COMMON) -mmcu=$(DEVICE)
 LFLAGS = $(LFLAGS_COMMON) -Wl,-Map,$(MAP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5503.ld" 
-CFLAGS_LP = $(CFLAGS_COMMON) -mmcu=$(DEVICE_LP) -DBRIDGE_UART0 -DLAUNCHPAD
+CFLAGS_LP = $(CFLAGS_COMMON) -mmcu=$(DEVICE_LP) -DLAUNCHPAD
 LFLAGS_LP = $(LFLAGS_COMMON) -Wl,-Map,$(MAP_LP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5529.ld"
 
 OBJS= $(patsubst %.o,$(OUTDIR)/%.o,$(OBJECTS))

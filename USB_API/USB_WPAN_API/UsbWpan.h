@@ -46,6 +46,7 @@ extern "C"
 #ifdef _WPAN_
 
 #define usbvendorOutputRequest wpanOutputRequest
+#define usbvendorOutputHandler wpanOutputHandler
 
 #define USBWPAN_RESET                   0x00
 #define USBWPAN_TX                      0x01
@@ -67,10 +68,39 @@ extern "C"
 #define USBWPAN_SET_EXTENDED_ADDR       0x11
 #define USBWAPN_GET_CAPABILITIES        0x12
 
+#define USBWPAN_SEND_STARTED            0x01
+#define USBWPAN_SEND_COMPLETE           0x02
+#define USBWPAN_INTERFACE_BUSY_ERROR    0x03
+#define USBWPAN_RECEIVE_STARTED         0x04
+#define USBWPAN_RECEIVE_COMPLETED       0x05
+#define USBWPAN_RECEIVE_IN_PROGRESS     0x06
+#define USBWPAN_GENERAL_ERROR           0x07
+#define USBWPAN_BUS_NOT_AVAILABLE       0x08
+//returned by USBWPAN_rejectData() if no data pending
+#define USBWPAN_NO_DATA_WAITING         0X01
+#define USBWPAN_WAITING_FOR_SEND        0x01
+#define USBWPAN_WAITING_FOR_RECEIVE     0x02
+#define USBWPAN_DATA_WAITING            0x04
+#define USBWPAN_BUS_NOT_AVAILABLE       0x08
+#define USBWPAN_ALL_WPAN_EVENTS         0xFF
+
+#define HDLC_FRAME      0x7E
+#define HDLC_ESC        0x7D
+#define HDLC_ESC_FRAME  0x5E
+#define HDLC_ESC_ESC    0x5D
+
 /*
- * WPANUSB output requests to forward to device
+ * Handle control packet header received from host
  */
 uint8_t wpanOutputRequest(void);
+
+/*
+ * Handle control packet data received from host
+ */
+uint8_t wpanOutputHandler(void);
+
+uint8_t USBWPAN_getInterfaceStatus(uint8_t intfNum);
+uint8_t USBWPAN_sendData(const uint8_t* data, uint16_t size, uint8_t intfNum);
 
 #endif //_VENDOR_
 
