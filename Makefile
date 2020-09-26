@@ -37,12 +37,12 @@ ifeq ($(OS),Windows_NT)
 		MKDIR = mkdir
 	endif
 else
+	ECHO = echo -e
+	SHELL = bash
 	ifeq ($(shell uname -s), Darwin)
 		SUDO = 
-		ECHO = echo
 	else
 		SUDO = sudo
-		ECHO = echo -e
 	endif
 
 	RM= rm -rf
@@ -50,13 +50,13 @@ else
 
 	# this environment variable is rarely set by default on Linux machines
 	ifeq (,$(PYTHON2))
-		PYTHON2 = $(shell command -v python2)
+		PYTHON2 = $(shell which python2)
 	endif
 
 	ifeq (,$(MSP430_TOOLCHAIN_PATH))
-		ifneq (,$(shell command -v msp430-elf-gcc))
+		ifneq (,$(shell which msp430-elf-gcc))
 			# get MSP430_TOOLCHAIN_PATH from msp430-elf-gcc itself
-			MSP430_TOOLCHAIN_PATH = \
+			MSP430_TOOLCHAIN_PATH := \
 				$(shell dirname \
 					$(shell dirname \
 						$(shell dirname \
