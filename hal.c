@@ -177,8 +177,10 @@ void hal_ext_uart(uint8_t active)
 {
     if(active) {
         GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN6);
+        USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
     } else {
         GPIO_setOutputLowOnPin( GPIO_PORT_P4, GPIO_PIN6);
+        USCI_A_UART_disableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
     }
 }
 #endif //LAUNCHPAD
