@@ -69,7 +69,8 @@ void hal_init(uint32_t mclkFreq)
     GPIO_setAsOutputPin(   GPIO_PORT_P1, GPIO_PIN0);
 
     //DEBUG LED (GREEN)
-    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    //GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN7);
     GPIO_setAsOutputPin(   GPIO_PORT_P4, GPIO_PIN7);
 
 #else

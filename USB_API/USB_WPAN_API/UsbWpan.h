@@ -86,8 +86,7 @@ extern "C"
 
 #define HDLC_FRAME      0x7E
 #define HDLC_ESC        0x7D
-#define HDLC_ESC_FRAME  0x5E
-#define HDLC_ESC_ESC    0x5D
+#define HDLC_XOR        0x20
 
 /*
  * Handle control packet header received from host

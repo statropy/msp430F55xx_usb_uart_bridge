@@ -109,6 +109,33 @@ void poll_hdlc()
             if(currentOffset > 3) {
                 //CRC Check?
 
+                #ifdef LAUNCHPAD
+                //disable interrupts
+                //use CRC module
+                __disable_interrupt();  // Enable interrupts globally
+                
+                CRC_setSeed(CRC_BASE, 0xffff);
+                CRC_set8BitData(CRC_BASE, currentAddress);
+                for(int i=0; i<currentOffset; i++) {
+                    CRC_set8BitData(CRC_BASE, wpanTxBuffer[i]);
+                }
+                uint16_t crc_check = CRC_getResultBitsReversed(CRC_BASE); //TODO CHECK
+
+                if(crc_check != 0xf0b8) {
+                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+                    USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
+                    USCI_A_UART_transmitData(UART_BRIDGE, crc_check >> 8);
+                    USCI_A_UART_transmitData(UART_BRIDGE, crc_check & 0xFF);
+                    USCI_A_UART_transmitData(UART_BRIDGE, 0);
+                    crc_check = CRC_getResult(CRC_BASE);
+                    USCI_A_UART_transmitData(UART_BRIDGE, crc_check >> 8);
+                    USCI_A_UART_transmitData(UART_BRIDGE, crc_check & 0xFF);
+                    USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
+                }
+
+                __enable_interrupt();  // Enable interrupts globally
+                 #endif
+
                 //end of frame, process if buffer contents
                 if(currentAddress == ADDRESS_WPAN) { //&& has contents
                     USBWPAN_sendData(wpanTxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
