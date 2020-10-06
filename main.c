@@ -62,8 +62,7 @@ volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler t
                                                // received by USB
                                                // 0x01 for SET, 0x02 for CLEAR
 
-//#define BUFFER_SIZE 1024
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 256
 #ifdef PASSTHROUGH_ONLY
 static uint8_t usbRxBuffer[BUFFER_SIZE];
 static uint8_t usbTxBuffer[BUFFER_SIZE];

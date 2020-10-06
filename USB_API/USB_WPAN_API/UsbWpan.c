@@ -51,7 +51,8 @@
 
 #define INTFNUM_OFFSET(X)   (X - WPAN0_INTFNUM)  //Get the CDC offset
 
-#define EP_MAX_PACKET_SIZE_WPAN      0x40
+#define EP_MAX_PACKET_SIZE_WPAN      64
+#define MAX_CONTROL_DATA_SIZE_WPAN  256
 
 extern uint16_t wUsbEventMask;
 
@@ -69,7 +70,7 @@ typedef struct {
 
 WpanWrite WpanWriteCtrl[WPAN_NUM_INTERFACES];
 
-uint8_t usbRequestIncomingData[EP_MAX_PACKET_SIZE_WPAN];
+uint8_t usbRequestIncomingData[MAX_CONTROL_DATA_SIZE_WPAN];
 
 extern __no_init tEDB __data16 tInputEndPointDescriptorBlock[];
 

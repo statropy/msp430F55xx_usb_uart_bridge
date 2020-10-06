@@ -89,12 +89,13 @@ DEVICE_LP = MSP430F5529
 CC      = $(GCC_DIR)/msp430-elf-gcc
 GDB     = $(GCC_DIR)/msp430-elf-gdb
 OBJCOPY = $(GCC_DIR)/msp430-elf-objcopy
+OBJSIZE = $(GCC_DIR)/msp430-elf-size
 
 CFLAGS_COMMON = $(INCLUDES) -Os -Wall -g0 -mlarge -mcode-region=none -mhwmult=f5series -gdwarf-3 -gstrict-dwarf -std=c99 
 LFLAGS_COMMON = -L $(SUPPORT_FILE_DIRECTORY) -Wl,--gc-sections -T"./USB_API/msp430USB.cmd"
 CFLAGS = $(CFLAGS_COMMON) -mmcu=$(DEVICE)
 LFLAGS = $(LFLAGS_COMMON) -Wl,-Map,$(MAP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5503.ld" 
-CFLAGS_LP = $(CFLAGS_COMMON) -mmcu=$(DEVICE_LP) -DLAUNCHPAD
+CFLAGS_LP = $(CFLAGS_COMMON) -mmcu=$(DEVICE_LP) -DBRIDGE_UART0 -DLAUNCHPAD
 LFLAGS_LP = $(LFLAGS_COMMON) -Wl,-Map,$(MAP_LP) -T"$(SUPPORT_FILE_DIRECTORY)/msp430f5529.ld"
 
 OBJS= $(patsubst %.o,$(OUTDIR)/%.o,$(OBJECTS))
@@ -149,6 +150,7 @@ $(OUTDIR_LP)/%.o : %.c
 %.hex: %.out
 	$(OBJCOPY) -O ihex $< $@
 	@$(ECHO) "\x1B[1;34m$@ completed\x1B[0m"
+	$(OBJSIZE) $<
 
 $(OUTFILE): ${OBJS}
 	@$(ECHO) "\x1B[1;34mLinking $@\x1B[0m"
