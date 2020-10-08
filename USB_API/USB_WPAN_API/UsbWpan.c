@@ -84,22 +84,24 @@ void sendFrameByte(void)
     USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
 }
 
-void sendEscByte(void) {
-    USCI_A_UART_transmitData(UART_BRIDGE, HDLC_ESC);
-}
-
 void sendInCrc(uint8_t value)
 {
     CRC_set8BitData(CRC_BASE, value);
     USCI_A_UART_transmitData(UART_BRIDGE, value);
 }
 
+void sendInCrcEscaped(uint8_t value)
+{
+    USCI_A_UART_transmitData(UART_BRIDGE, HDLC_ESC);
+    CRC_set8BitData(CRC_BASE, value);
+    USCI_A_UART_transmitData(UART_BRIDGE, value^HDLC_XOR);
+}
+
 void sendEscaped(const void *buf, size_t len) {
     uint8_t *pTx = (uint8_t*)buf;
     for(int i=0; i<len; i++) {
         if(*pTx == HDLC_FRAME || *pTx == HDLC_ESC) {
-            sendEscByte();
-            sendInCrc(*pTx ^ 0x20);
+            sendInCrcEscaped(*pTx);
         } else {
             sendInCrc(*pTx);
         }

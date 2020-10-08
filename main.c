@@ -53,6 +53,28 @@
 
 #define MCLK_FREQUENCY 20000000
 
+//UART config for Baudrate 115200
+#if   MCLK_FREQUENCY == 20000000
+#define UART_PRESCALAR 173
+#define UART_FIRST_MOD   0
+#define UART_SECOND_MOD  5
+#elif MCLK_FREQUENCY == 16000000
+#define UART_PRESCALAR 138
+#define UART_FIRST_MOD   0
+#define UART_SECOND_MOD  7
+#elif MCLK_FREQUENCY ==  8000000
+#define UART_PRESCALAR  69
+#define UART_FIRST_MOD   0
+#define UART_SECOND_MOD  4
+#elif MCLK_FREQUENCY == 24000000
+#define UART_PRESCALAR 208
+#define UART_FIRST_MOD   0
+#define UART_SECOND_MOD  3
+#else
+#error INVALID MCLK_FREQUENCY 
+#endif
+
+
 // Global flags set by events
 volatile uint8_t bCDCDataReceived_event = FALSE;  // Flag set by event handler to
                                                // indicate data has been
@@ -103,16 +125,12 @@ void poll_hdlc()
         }
 
         uint8_t c = RINGBUF_pop_unsafe(&uartRing);
-        //TODO: CRC check
         
         if(c == HDLC_FRAME) {
             if(currentOffset > 3) {
-                //CRC Check?
 
-                #ifdef LAUNCHPAD
-                //disable interrupts
-                //use CRC module
-                __disable_interrupt();  // Enable interrupts globally
+                // Disable interrupts globally to guarantee CRC module access
+                __disable_interrupt();
                 
                 CRC_setSeed(CRC_BASE, 0xffff);
                 CRC_set8BitData(CRC_BASE, currentAddress);
@@ -121,8 +139,15 @@ void poll_hdlc()
                 }
                 uint16_t crc_check = CRC_getResultBitsReversed(CRC_BASE); //TODO CHECK
 
+                __enable_interrupt();  // Enable interrupts globally
+
                 if(crc_check != 0xf0b8) {
+                    //bad CRC, discard
+#ifdef LAUNCHPAD
                     GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
+#endif
+#ifdef CRC_DEBUG
+                    
                     USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
                     USCI_A_UART_transmitData(UART_BRIDGE, crc_check >> 8);
                     USCI_A_UART_transmitData(UART_BRIDGE, crc_check & 0xFF);
@@ -131,27 +156,35 @@ void poll_hdlc()
                     USCI_A_UART_transmitData(UART_BRIDGE, crc_check >> 8);
                     USCI_A_UART_transmitData(UART_BRIDGE, crc_check & 0xFF);
                     USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
-                }
-
-                __enable_interrupt();  // Enable interrupts globally
-                 #endif
-
-                //end of frame, process if buffer contents
-                if(currentAddress == ADDRESS_WPAN) { //&& has contents
-                    USBWPAN_sendData(wpanTxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
+                    while(1);
+#endif
+                } else if(currentAddress == ADDRESS_WPAN) {
+                    if(wpanTxBuffer[0] == 0x03) {
+                        USBWPAN_sendData(wpanTxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
+                    }
+#ifdef CRC_DEBUG
+                      else {
+                        USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
+                        USCI_A_UART_transmitData(UART_BRIDGE, 'Z');
+                        USCI_A_UART_transmitData(UART_BRIDGE, 'Z');
+                        USCI_A_UART_transmitData(UART_BRIDGE, 'Z');
+                        USCI_A_UART_transmitData(UART_BRIDGE, wpanTxBuffer[0]);
+                        USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
+                    }
+#endif
                 } else if(currentAddress == ADDRESS_CDC) {
-                    USBCDC_sendData(cdcTxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
-                } else {
-                    //discard
+                    if(cdcTxBuffer[0] == 0x03) {
+                        USBCDC_sendData(cdcTxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
+                    }
                 }
             }
+            //reset packet
             currentOffset = 0;
             currentAddress = 0xFF;
         } else if(c == HDLC_ESC) {
             inEsc = TRUE;
         } else {
             if(inEsc) {
-                //TODO assert c != HDLC_FRAME
                 c ^= 0x20;
                 inEsc = FALSE;
             }
@@ -162,10 +195,11 @@ void poll_hdlc()
                     pCurrentBuffer = wpanTxBuffer;
                 } else if(currentAddress == ADDRESS_CDC) {
                     pCurrentBuffer = cdcTxBuffer;
+                } else {
+                    currentAddress = 0xFF;
                 }
                 currentOffset = 0;
-            }  else {
-                //TODO check buffer full
+            }  else if(currentOffset < BUFFER_SIZE) {
                 pCurrentBuffer[currentOffset] = c;
                 currentOffset++;
             }
@@ -183,22 +217,16 @@ int main(void)
     hal_init(MCLK_FREQUENCY); //MCLK=SMCLK=FLL=MCLK_FREQUENCY; ACLK=REFO=32kHz
     USB_setup(TRUE, TRUE); // Init USB & events; if a host is present, connect
 
-    //Baudrate = 115200, clock freq = 8.000MHz
-    //UCBRx = 69, UCBRFx = 0, UCBRSx = 4, UCOS16 = 0
-    //Baudrate = 115200, clock freq = 16.000MHz
-    //UCBRx = 138, UCBRFx = 0, UCBRSx = 7, UCOS16 = 0
-    //Baudrate = 115200, clock freq = 20.000MHz
-    //UCBRx = 173, UCBRFx = 0, UCBRSx = 5, UCOS16 = 0
     USCI_A_UART_initParam param = {0};
     param.selectClockSource = USCI_A_UART_CLOCKSOURCE_SMCLK;
-    param.clockPrescalar = 173;
-    param.firstModReg = 0;
-    param.secondModReg = 5;
-    param.parity = USCI_A_UART_NO_PARITY;
-    param.msborLsbFirst = USCI_A_UART_LSB_FIRST;
-    param.numberofStopBits = USCI_A_UART_ONE_STOP_BIT;
-    param.uartMode = USCI_A_UART_MODE;
-    param.overSampling = USCI_A_UART_LOW_FREQUENCY_BAUDRATE_GENERATION;
+    param.clockPrescalar    = UART_PRESCALAR;
+    param.firstModReg       = UART_FIRST_MOD;
+    param.secondModReg      = UART_SECOND_MOD;
+    param.parity            = USCI_A_UART_NO_PARITY;
+    param.msborLsbFirst     = USCI_A_UART_LSB_FIRST;
+    param.numberofStopBits  = USCI_A_UART_ONE_STOP_BIT;
+    param.uartMode          = USCI_A_UART_MODE;
+    param.overSampling      = USCI_A_UART_LOW_FREQUENCY_BAUDRATE_GENERATION;
 
     if (STATUS_FAIL == USCI_A_UART_init(UART_BRIDGE, &param)){
         return 1;
