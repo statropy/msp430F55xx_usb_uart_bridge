@@ -63,7 +63,7 @@ extern "C"
 // Configuration Constants that can change
 // #define that relates to Device Descriptor
 #define USB_VID               0x2047    // Vendor ID (VID)
-#define USB_PID               0x03EE        // Product ID (PID)
+#define USB_PID               0x0AA5    // Product ID (PID)
 
 /*----------------------------------------------------------------------------+
 | Firmware Version                                                            |
