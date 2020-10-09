@@ -62,7 +62,7 @@ volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler t
                                                // 0x01 for SET, 0x02 for CLEAR
 
 //#define BUFFER_SIZE 1024
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 512
 static uint8_t usbRxBuffer[BUFFER_SIZE];
 static uint8_t usbTxBuffer[BUFFER_SIZE];
 static uint8_t uartRingBuffer[BUFFER_SIZE];
