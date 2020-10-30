@@ -1,4 +1,4 @@
-![CI](https://github.com/jadonk/msp430F55xx_usb_uart_bridge/workflows/CI/badge.svg)
+![CI](https://github.com/statropy/msp430F55xx_usb_uart_bridge/workflows/CI/badge.svg)
 
 # msp430F55xx_usb_uart_bridge
 Bridge between UART and USB CDC serial port for MSP430F55xx

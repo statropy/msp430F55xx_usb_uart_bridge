@@ -98,7 +98,7 @@ void hal_init(uint32_t mclkFreq)
 
 #endif //LAUNCHPAD
     UCS_initClockSignal(
-       UCS_SMCLK,
+       UCS_FLLREF,
        UCS_REFOCLK_SELECT,
        UCS_CLOCK_DIVIDER_1);
 

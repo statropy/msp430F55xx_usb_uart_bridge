@@ -50,7 +50,7 @@
 
 #include "ringbuf.h"
 
-#define MCLK_FREQUENCY 24000000
+#define MCLK_FREQUENCY 20000000
 
 // Global flags set by events
 volatile uint8_t bCDCDataReceived_event = FALSE;  // Flag set by event handler to
@@ -89,9 +89,9 @@ int main(void)
     //UCBRx = 173, UCBRFx = 0, UCBRSx = 5, UCOS16 = 0
     USCI_A_UART_initParam param = {0};
     param.selectClockSource = USCI_A_UART_CLOCKSOURCE_SMCLK;
-    param.clockPrescalar = 208;
+    param.clockPrescalar = 173;
     param.firstModReg = 0;
-    param.secondModReg = 3;
+    param.secondModReg = 5;
     param.parity = USCI_A_UART_NO_PARITY;
     param.msborLsbFirst = USCI_A_UART_LSB_FIRST;
     param.numberofStopBits = USCI_A_UART_ONE_STOP_BIT;
