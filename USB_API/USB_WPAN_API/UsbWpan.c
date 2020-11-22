@@ -71,6 +71,7 @@ typedef struct {
 WpanWrite WpanWriteCtrl[WPAN_NUM_INTERFACES];
 
 uint8_t usbRequestIncomingData[MAX_CONTROL_DATA_SIZE_WPAN];
+uint16_t usbRequestIncomingLength = 0;
 
 extern __no_init tEDB __data16 tInputEndPointDescriptorBlock[];
 
@@ -118,35 +119,41 @@ void sendCrc(void)
 }
 
 //Send control packet to CC1352
-void sendUartPacket(void)
+void USBWPAN_sendPacket(void)
 {
     CRC_setSeed(CRC_BASE, 0xffff);
     sendFrameByte();
     sendInCrc(0x01); //address EP0
     sendInCrc(0x03); //packet type
-    sendEscaped(&tSetupPacket, sizeof(tDEVICE_REQUEST));
-    sendEscaped(usbRequestIncomingData, tSetupPacket.wLength);
+    sendEscaped(usbRequestIncomingData, usbRequestIncomingLength);
     sendCrc();
     sendFrameByte();
+    usbRequestIncomingLength = 0;
+    USBWPAN_handleDataConsumed();
 }
 
 //process a received EP0 control header in tSetupPacket
 uint8_t wpanOutputRequest(void)
 {
+    uint8_t bWakeUp = FALSE;
+
+    memcpy(usbRequestIncomingData, &tSetupPacket, sizeof(tDEVICE_REQUEST));
+    usbRequestIncomingLength = sizeof(tDEVICE_REQUEST);
+
     if(tSetupPacket.wLength) {
-        usbReceiveDataPacketOnEP0(usbRequestIncomingData);
+        usbReceiveDataPacketOnEP0(usbRequestIncomingData+usbRequestIncomingLength);
+        usbRequestIncomingLength += tSetupPacket.wLength;
     } else {
-        sendUartPacket();
+        bWakeUp |= USBWPAN_handleDataReceived();
         usbSendZeroLengthPacketOnIEP0();
     }
-    return FALSE;
+    return bWakeUp;
 }
 
 //Handle EP0 data interrupt, send to CC1352
 uint8_t wpanOutputHandler(void)
 {
-    sendUartPacket();
-    return FALSE;
+    return USBWPAN_handleDataReceived();
 }
 
 int16_t WpanToHostFromBuffer (uint8_t intfNum)

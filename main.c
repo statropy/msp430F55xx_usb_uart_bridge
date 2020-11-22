@@ -67,7 +67,7 @@
 #endif
 
 //#define PASSTHROUGH_ONLY
-//#define CRC_DEBUG
+#define CRC_DEBUG
 //#define SKIP_CRC
 
 // Global flags set by events
@@ -78,8 +78,10 @@ volatile uint8_t bCDCBreak_event = 0;             // Flag set by event handler t
                                                // indicate break has been
                                                // received by USB
                                                // 0x01 for SET, 0x02 for CLEAR
+volatile uint8_t bWPANDataReceived_event = FALSE;
+volatile uint8_t bUSBIE = 0;
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 768
 #ifdef PASSTHROUGH_ONLY
 static uint8_t usbRxBuffer[BUFFER_SIZE];
 static uint8_t usbTxBuffer[BUFFER_SIZE];
@@ -108,25 +110,9 @@ void poll_hdlc()
 #ifdef CRC_DEBUG
     uint8_t CRC_DEBUG_ERROR = 0;
 #endif
-    uint16_t crc_check;
+    uint16_t crc_check = 0;
 
-    while(!RINGBUF_empty(&uartRing)) {
-#ifdef CRC_DEBUG
-        if(uartRxOverflow || uartError || usbError) {
-            __disable_interrupt();
-            USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
-            USCI_A_UART_transmitData(UART_BRIDGE, 0xEE);
-            USCI_A_UART_transmitData(UART_BRIDGE, 0xEE);
-            USCI_A_UART_transmitData(UART_BRIDGE, uartRxOverflow);
-            USCI_A_UART_transmitData(UART_BRIDGE, uartError);
-            USCI_A_UART_transmitData(UART_BRIDGE, usbError);
-            USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
-            uartRxOverflow = 0;
-            uartError = 0;
-            usbError = 0;
-            __enable_interrupt();
-        }
-#endif
+    while(!bWPANDataReceived_event && !RINGBUF_empty(&uartRing)) {
         if(currentAddress == ADDRESS_WPAN) {
             if(USBWPAN_getInterfaceStatus(WPAN0_INTFNUM) & USBWPAN_WAITING_FOR_SEND) {
                 return;
@@ -144,20 +130,14 @@ void poll_hdlc()
 #ifdef SKIP_CRC
                 crc_check = 0xf0b8;
 #else
-                uint8_t USBIE_tmp = USBIE;
-                USBIE = 0;
                 CRC_setSeed(CRC_BASE, 0xffff);
                 CRC_set8BitData(CRC_BASE, currentAddress);
                 for(int i=0; i<currentOffset; i++) {
                     CRC_set8BitData(CRC_BASE, hdlcRxBuffer[i]);
                 }
                 crc_check = CRC_getResultBitsReversed(CRC_BASE);
-                USBIE = USBIE_tmp;
 #endif
                 if(crc_check != 0xf0b8) {
-#ifdef LAUNCHPAD
-                    GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
-#endif
 #ifdef CRC_DEBUG
                     CRC_DEBUG_ERROR = 1;
 #endif
@@ -166,26 +146,15 @@ void poll_hdlc()
                     if(hdlcRxBuffer[0] == 0x03) {
                         USBWPAN_sendData(hdlcRxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
                     }
-#ifdef CRC_DEBUG
-                    else {
-                        CRC_DEBUG_ERROR = 2;
-                    }
-#endif
                 } else if(currentAddress == ADDRESS_CDC) {
                     if(hdlcRxBuffer[0] == 0x03) {
                         USBCDC_sendData(hdlcRxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
                     }
-#ifdef CRC_DEBUG
-                    else {
-                        CRC_DEBUG_ERROR = 3;
-                    }
-#endif
                 }
             }
 
 #ifdef CRC_DEBUG
             if (CRC_DEBUG_ERROR) {
-                __disable_interrupt();
                 USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
                 USCI_A_UART_transmitData(UART_BRIDGE, 0xEE);
                 USCI_A_UART_transmitData(UART_BRIDGE, CRC_DEBUG_ERROR);
@@ -195,13 +164,9 @@ void poll_hdlc()
                 USCI_A_UART_transmitData(UART_BRIDGE, uartRxOverflow);
                 USCI_A_UART_transmitData(UART_BRIDGE, crc_check >> 8);
                 USCI_A_UART_transmitData(UART_BRIDGE, crc_check & 0xFF);
-                for(int i=0; i<currentOffset; i++) {
-                    USCI_A_UART_transmitData(UART_BRIDGE, hdlcRxBuffer[i]);
-                }
                 USCI_A_UART_transmitData(UART_BRIDGE, HDLC_FRAME);
                 uartError = 0;
                 uartRxOverflow = 0;
-                __enable_interrupt();
             }
 #endif
             currentOffset = 0;
@@ -241,7 +206,7 @@ int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 	
-    // Minimum Vcore setting required for the USB API is PMM_CORE_LEVEL_2 .
+    // Use Level 3 for high speed system clock
     PMM_setVCore(PMM_CORE_LEVEL_3);
     hal_init(MCLK_FREQUENCY); //MCLK=SMCLK=FLL=MCLK_FREQUENCY; ACLK=REFO=32kHz
     USB_setup(TRUE, TRUE); // Init USB & events; if a host is present, connect
@@ -321,6 +286,11 @@ int main(void)
                     }
                 }
 #else
+                // EP0 packet received, send out over UART
+                if(bWPANDataReceived_event) {
+                    bWPANDataReceived_event = FALSE;
+                    USBWPAN_sendPacket();
+                }
                 poll_hdlc();
 #endif
                 break;
