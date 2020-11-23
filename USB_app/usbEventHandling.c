@@ -60,7 +60,7 @@
 #endif
 
 #ifdef _WPAN_
-#include "USB_API/USB_WPAN_API/UsbWPAN.h"
+#include "USB_API/USB_WPAN_API/UsbWpan.h"
 #endif
 
 //These variables are only example, they are not needed for stack
