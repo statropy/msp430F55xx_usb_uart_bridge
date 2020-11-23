@@ -141,13 +141,16 @@ void poll_hdlc()
 #ifdef CRC_DEBUG
                     CRC_DEBUG_ERROR = 1;
 #endif
-                }
-                else if(currentAddress == ADDRESS_WPAN) {
-                    if(hdlcRxBuffer[0] == 0x03) {
+                } else {
+                    if((hdlcRxBuffer[0] & 1) == 0) {
+                        //I-Frame, send S-Frame ACK
+                        USBWPAN_sendAck(currentAddress, (hdlcRxBuffer[0] >> 1) & 0x7);
+                    }
+
+                    if(currentAddress == ADDRESS_WPAN) {
                         USBWPAN_sendData(hdlcRxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
                     }
-                } else if(currentAddress == ADDRESS_CDC) {
-                    if(hdlcRxBuffer[0] == 0x03) {
+                    else if(currentAddress == ADDRESS_CDC) {
                         USBCDC_sendData(hdlcRxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
                     }
                 }
