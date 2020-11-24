@@ -143,6 +143,11 @@ void USBWPAN_sendAck(uint8_t address, uint8_t send_seq)
     sendFrameByte();
 }
 
+void USBWPAN_reset(void)
+{
+    USBWPAN_handleDataConsumed();
+}
+
 //process a received EP0 control header in tSetupPacket
 uint8_t wpanOutputRequest(void)
 {

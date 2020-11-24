@@ -130,6 +130,11 @@ void hal_ext_boot(uint8_t active)
     }
 }
 
+uint8_t hal_ext_boot_read(void)
+{
+    return GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN2);
+}
+
 void hal_ext_reset(uint8_t active)
 {
     if(active) {
@@ -163,6 +168,11 @@ void hal_ext_boot(uint8_t active)
     } else {
         GPIO_setAsInputPin(    GPIO_PORT_P4, GPIO_PIN7);
     }
+}
+
+uint8_t hal_ext_boot_read(void)
+{
+    return GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7);
 }
 
 void hal_ext_reset(uint8_t active)

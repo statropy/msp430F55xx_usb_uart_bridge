@@ -106,6 +106,7 @@ uint8_t USBWPAN_sendData(const uint8_t* data, uint16_t size, uint8_t intfNum);
 
 void USBWPAN_sendPacket(void);
 void USBWPAN_sendAck(uint8_t address, uint8_t send_seq);
+void USBWPAN_reset(void);
 
 #endif //_VENDOR_
 

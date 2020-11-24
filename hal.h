@@ -69,6 +69,15 @@ void hal_ext_boot(uint8_t active);
 
 //*****************************************************************************
 //
+//! Read the external BOOT line.
+//!
+//! \return TRUE when high, FALSE when low
+//
+//*****************************************************************************
+uint8_t hal_ext_boot_read(void);
+
+//*****************************************************************************
+//
 //! Control the external RESET line.
 //!
 //! \param active is bool, TRUE in reset.

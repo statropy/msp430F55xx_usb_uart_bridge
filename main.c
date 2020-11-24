@@ -66,7 +66,6 @@
 #error INVALID MCLK_FREQUENCY 
 #endif
 
-//#define PASSTHROUGH_ONLY
 #define CRC_DEBUG
 //#define SKIP_CRC
 
@@ -82,15 +81,14 @@ volatile uint8_t bWPANDataReceived_event = FALSE;
 volatile uint8_t bUSBIE = 0;
 
 #define BUFFER_SIZE 768
-#ifdef PASSTHROUGH_ONLY
-static uint8_t usbRxBuffer[BUFFER_SIZE];
-static uint8_t usbTxBuffer[BUFFER_SIZE];
-#else
-static uint8_t hdlcRxBuffer[BUFFER_SIZE];
-#endif
+
+static uint8_t rxBuffer[BUFFER_SIZE];
+static uint8_t txBuffer[BUFFER_SIZE];
 
 static uint8_t uartRingBuffer[BUFFER_SIZE];
 static ringbuf_t uartRing;
+
+static uint8_t userBootState = 1;
 
 static volatile uint8_t usbError = 0;
 static volatile uint8_t uartError = 0;
@@ -98,19 +96,33 @@ static volatile uint8_t uartRxOverflow = 0;
 
 #define ADDRESS_WPAN 0x03
 #define ADDRESS_CDC  0x05
+#define ADDRESS_HW   0x41
 
 static uint16_t bytesSent, bytesReceived;
 
-#ifndef PASSTHROUGH_ONLY
-void poll_hdlc()
+static enum _rx_state {
+    STATE_LOOK_FOR_HDLC,
+    STATE_HDLC,
+    STATE_PASSTHROUGH
+} rxState = STATE_LOOK_FOR_HDLC;
+
+void poll_hdlc(int reset)
 {
     static uint8_t inEsc = FALSE;
     static uint8_t currentAddress = 0xFF;
-    static uint8_t currentOffset = 0;
+    static uint16_t currentOffset = 0;
 #ifdef CRC_DEBUG
     uint8_t CRC_DEBUG_ERROR = 0;
 #endif
     uint16_t crc_check = 0;
+
+    if (reset) {
+        inEsc = FALSE;
+        currentAddress = 0xFF;
+        currentOffset = 0;
+        RINGBUF_flush(&uartRing);
+        return;
+    }
 
     while(!bWPANDataReceived_event && !RINGBUF_empty(&uartRing)) {
         if(currentAddress == ADDRESS_WPAN) {
@@ -126,14 +138,14 @@ void poll_hdlc()
         uint8_t c = RINGBUF_pop_unsafe(&uartRing);
         
         if(c == HDLC_FRAME) {
-            if(currentOffset > 3) {
+            if(currentAddress != 0xFF) {
 #ifdef SKIP_CRC
                 crc_check = 0xf0b8;
 #else
                 CRC_setSeed(CRC_BASE, 0xffff);
                 CRC_set8BitData(CRC_BASE, currentAddress);
                 for(int i=0; i<currentOffset; i++) {
-                    CRC_set8BitData(CRC_BASE, hdlcRxBuffer[i]);
+                    CRC_set8BitData(CRC_BASE, rxBuffer[i]);
                 }
                 crc_check = CRC_getResultBitsReversed(CRC_BASE);
 #endif
@@ -142,16 +154,18 @@ void poll_hdlc()
                     CRC_DEBUG_ERROR = 1;
 #endif
                 } else {
-                    if((hdlcRxBuffer[0] & 1) == 0) {
+                    rxState = STATE_HDLC;
+
+                    if((rxBuffer[0] & 1) == 0) {
                         //I-Frame, send S-Frame ACK
-                        USBWPAN_sendAck(currentAddress, (hdlcRxBuffer[0] >> 1) & 0x7);
+                        USBWPAN_sendAck(currentAddress, (rxBuffer[0] >> 1) & 0x7);
                     }
 
                     if(currentAddress == ADDRESS_WPAN) {
-                        USBWPAN_sendData(hdlcRxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
+                        USBWPAN_sendData(rxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
                     }
                     else if(currentAddress == ADDRESS_CDC) {
-                        USBCDC_sendData(hdlcRxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
+                        USBCDC_sendData(rxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
                     }
                 }
             }
@@ -185,14 +199,20 @@ void poll_hdlc()
             if(currentAddress == 0xFF) {
                 currentAddress = c;
                 if(currentAddress == ADDRESS_WPAN || 
-                    currentAddress == ADDRESS_CDC) {
+                   currentAddress == ADDRESS_CDC ||
+                   currentAddress == ADDRESS_HW) {
                 } else {
                     currentAddress = 0xFF;
                 }
                 currentOffset = 0;
-            }  else {
-                if(currentOffset < BUFFER_SIZE) {
-                    hdlcRxBuffer[currentOffset] = c;
+            } else {
+                if(rxState == STATE_LOOK_FOR_HDLC && currentOffset > 10) {
+                    rxState = STATE_PASSTHROUGH;
+                    USBCDC_sendData(txBuffer, currentOffset, CDC0_INTFNUM);
+                    return;
+                }
+                else if(currentOffset < BUFFER_SIZE) {
+                    rxBuffer[currentOffset] = c;
                     currentOffset++;
                 } else {
                     //buffer overflow
@@ -203,7 +223,33 @@ void poll_hdlc()
         }
     }
 }
-#endif
+
+void poll_passthrough(void)
+{
+    uint8_t sendError = 0;
+    uint16_t count = 0;
+
+    if (bCDCDataReceived_event){
+        bCDCDataReceived_event = FALSE;
+
+        count = USBCDC_receiveDataInBuffer((uint8_t*)rxBuffer, BUFFER_SIZE, CDC0_INTFNUM);
+
+        uint8_t *pBuffer = rxBuffer;
+        for(int i=count; i; i--) {
+            USCI_A_UART_transmitData(UART_BRIDGE, *pBuffer++);
+        }
+    }
+
+    if(!RINGBUF_empty(&uartRing) &&
+       !(USBCDC_getInterfaceStatus(CDC0_INTFNUM, &bytesSent, &bytesReceived) & USBCDC_WAITING_FOR_SEND)) {
+        count = RINGBUF_receiveDataInBuffer(&uartRing, txBuffer, BUFFER_SIZE);
+        sendError = USBCDC_sendData(txBuffer, count, CDC0_INTFNUM);
+        if(sendError != USBCDC_SEND_STARTED) {
+            usbError = sendError;
+            RINGBUF_flush(&uartRing);
+        }
+    }
+}
 
 int main(void)
 {
@@ -241,13 +287,12 @@ int main(void)
 
     USCI_A_UART_enableInterrupt(UART_BRIDGE, USCI_A_UART_RECEIVE_INTERRUPT);
 
+    rxState = STATE_LOOK_FOR_HDLC;
+
+    uint8_t userBootNow = 1;
+
     while (1)
     {
-#ifdef PASSTHROUGH_ONLY
-        uint8_t sendError;
-        uint16_t count;
-#endif
-
         if(bCDCBreak_event == 3) {
             //Break Set/Cleared, jump to BSL
 //            __disable_interrupt(); // disable interrupts
@@ -258,6 +303,15 @@ int main(void)
             hal_ext_reset(TRUE);
             hal_ext_boot(TRUE);
             __delay_cycles(2000);
+
+            rxState = STATE_PASSTHROUGH;
+            userBootState = 1;
+            userBootNow = 1;
+            if(bWPANDataReceived_event) {
+                USBWPAN_reset(); //auto-clear flag
+            }
+            poll_hdlc(TRUE);
+
             hal_ext_reset(FALSE);
             __delay_cycles(60000);
             hal_ext_boot(FALSE);
@@ -268,41 +322,36 @@ int main(void)
             case ST_ENUM_ACTIVE:
                 hal_ext_uart(TRUE);
 
-#ifdef PASSTHROUGH_ONLY
-                if (bCDCDataReceived_event){
-                    bCDCDataReceived_event = FALSE;
+                userBootNow = hal_ext_boot_read();
 
-                    count = USBCDC_receiveDataInBuffer((uint8_t*)usbRxBuffer, BUFFER_SIZE, CDC0_INTFNUM);
-
-                    uint8_t *txBuffer = usbRxBuffer;
-                    for(int i=count; i; i--) {
-                        USCI_A_UART_transmitData(UART_BRIDGE, *txBuffer++);
+                if(userBootState == 0 && userBootNow == 1) {
+                    //0 -> 1 transition, button released, passthrough
+                    rxState = STATE_PASSTHROUGH;
+                    if(bWPANDataReceived_event) {
+                        USBWPAN_reset(); //auto-clear flag
                     }
+                } else if(userBootState == 1 && userBootNow == 0) {
+                    //1 -> 0 transition, button pressed, look for HDLC
+                    rxState = STATE_LOOK_FOR_HDLC;
                 }
+                userBootState = userBootNow;
 
-                if(!RINGBUF_empty(&uartRing) && !(USBCDC_getInterfaceStatus(CDC0_INTFNUM,&bytesSent,&bytesReceived) & USBCDC_WAITING_FOR_SEND)) {
-                    count = RINGBUF_receiveDataInBuffer(&uartRing, usbTxBuffer, BUFFER_SIZE);
-                    sendError = USBCDC_sendData(usbTxBuffer,count,CDC0_INTFNUM);
-                    if(sendError != USBCDC_SEND_STARTED) {
-                        usbError = sendError;
-                        RINGBUF_flush(&uartRing);
+                if (rxState == STATE_PASSTHROUGH) {
+                    poll_passthrough();
+                } else {
+                    // EP0 packet received, send out over UART
+                    if(bWPANDataReceived_event) {
+                        USBWPAN_sendPacket(); //auto-clear flag
                     }
+                    poll_hdlc(FALSE);
                 }
-#else
-                // EP0 packet received, send out over UART
-                if(bWPANDataReceived_event) {
-                    bWPANDataReceived_event = FALSE;
-                    USBWPAN_sendPacket();
-                }
-                poll_hdlc();
-#endif
                 break;
 
             case ST_PHYS_DISCONNECTED:
             case ST_ENUM_SUSPENDED:
             case ST_PHYS_CONNECTED_NOENUM_SUSP:
                 hal_ext_uart(FALSE);
-                RINGBUF_flush(&uartRing);
+                poll_hdlc(TRUE);
                 __bis_SR_register(LPM3_bits + GIE);
                 _NOP();
                 break;

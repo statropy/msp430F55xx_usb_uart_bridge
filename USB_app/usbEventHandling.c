@@ -195,6 +195,7 @@ uint8_t USBWPAN_handleDataReceived(void)
 
 uint8_t USBWPAN_handleDataConsumed(void)
 {
+    bWPANDataReceived_event = FALSE;
     USBIE = bUSBIE;
 
     return (TRUE);
