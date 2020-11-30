@@ -4,8 +4,7 @@ Debug/
 FF5529LP/
 FF5529LP_UART0/
 Release/
-BUILD/
-BUILD_LP/
+BUILD*/
 *.out
 *.map
 *.hex
