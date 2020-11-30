@@ -65,6 +65,13 @@ uint16_t RINGBUF_push(ringbuf_t *ring, uint8_t b)
     return 0;
 }
 
+uint8_t RINGBUF_pop_unsafe(ringbuf_t *ring)
+{
+    uint8_t c = ring->buffer[ring->tail];
+    ring->tail = NEXT(ring->tail, ring->size);
+    return c;
+}
+
 uint16_t RINGBUF_empty(ringbuf_t *ring)
 {
     return ring->head == ring->tail;

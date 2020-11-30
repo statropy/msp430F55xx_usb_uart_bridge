@@ -56,6 +56,7 @@ void RINGBUF_flush(ringbuf_t *ring);
 uint16_t RINGBUF_empty(ringbuf_t *ring);
 uint16_t RINGBUF_full(ringbuf_t *ring);
 uint16_t RINGBUF_push(ringbuf_t *ring, uint8_t b);
+uint8_t RINGBUF_pop_unsafe(ringbuf_t *ring);
 uint16_t RINGBUF_getBytesInBuffer(ringbuf_t *ring);
 uint16_t RINGBUF_receiveDataInBuffer(ringbuf_t *ring, uint8_t* buffer, uint16_t count);
 

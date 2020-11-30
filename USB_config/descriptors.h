@@ -52,7 +52,9 @@ extern "C"
 //***********************************************************************************************
 // CDC or HID - Define both for composite support
 //***********************************************************************************************
-#define _CDC_          // Needed for CDC inteface
+#define _CDC_          // Needed for CDC interface
+#define _VENDOR_       // Needed for Vendor-specific requests (WPAN)
+#define _WPAN_         // Needed for WPAN interface
 
 //***********************************************************************************************
 // CONFIGURATION CONSTANTS
@@ -80,27 +82,30 @@ extern "C"
 #define USB_STR_INDEX_SERNUM  3
 #define PHDC_ENDPOINTS_NUMBER               2  // bulk in, bulk out
 
-
-#define DESCRIPTOR_TOTAL_LENGTH            67            // wTotalLength, This is the sum of configuration descriptor length  + CDC descriptor length  + HID descriptor length
-#define USB_NUM_INTERFACES                  2            //Number of implemented interfaces.
+#define DESCRIPTOR_TOTAL_LENGTH            83            // wTotalLength, This is the sum of configuration descriptor length  + CDC descriptor length  + HID descriptor length
+#define USB_NUM_INTERFACES                  3            //Number of implemented interfaces.
 
 #define CDC0_COMM_INTERFACE                0              // Comm interface number of CDC0
 #define CDC0_DATA_INTERFACE                1              // Data interface number of CDC0
-#define CDC0_INTEP_ADDR                    0x81              // Interrupt Endpoint Address of CDC0
-#define CDC0_OUTEP_ADDR                    0x02              // Output Endpoint Address of CDC0
-#define CDC0_INEP_ADDR                    0x82              // Input Endpoint Address of CDC0
+#define WPAN0_INTERFACE                    2
+#define CDC0_INTEP_ADDR                    0x83           // Interrupt Endpoint Address of CDC0
+#define CDC0_OUTEP_ADDR                    0x02           // Output Endpoint Address of CDC0
+#define CDC0_INEP_ADDR                     0x82           // Input Endpoint Address of CDC0
+#define WPAN0_INEP_ADDR                    0x81           // Input Endpoint Address of WPAN0
 
 #define CDC_NUM_INTERFACES                   1           //  Total Number of CDCs implemented. should set to 0 if there are no CDCs implemented.
 #define HID_NUM_INTERFACES                   0           //  Total Number of HIDs implemented. should set to 0 if there are no HIDs implemented.
 #define MSC_NUM_INTERFACES                   0           //  Total Number of MSCs implemented. should set to 0 if there are no MSCs implemented.
 #define PHDC_NUM_INTERFACES                  0           //  Total Number of PHDCs implemented. should set to 0 if there are no PHDCs implemented.
+#define WPAN_NUM_INTERFACES                  1
 // Interface numbers for the implemented CDSs and HIDs, This is to use in the Application(main.c) and in the interupt file(UsbIsr.c).
 #define CDC0_INTFNUM                0
+#define WPAN0_INTFNUM               1
 #define MSC_MAX_LUN_NUMBER                   1           // Maximum number of LUNs supported
 
 #define PUTWORD(x)      ((x)&0xFF),((x)>>8)
 #define USB_OUTEP_INT_EN BIT0 | BIT2 
-#define USB_INEP_INT_EN BIT0 | BIT1 | BIT2 
+#define USB_INEP_INT_EN BIT0 | BIT1 | BIT2 | BIT3 
 #define USB_USE_INTERNAL_3V3LDO TRUE
 #define USB_XT2_BYPASS_MODE FALSE
 
@@ -112,7 +117,7 @@ extern "C"
 #define USB_DISABLE_XT_SUSPEND 1             // If non-zero, then USB_suspend() will disable the oscillator
                                              // that is designated by USB_PLL_XT; if zero, USB_suspend won't
                                              // affect the oscillator
-#define USB_DMA_CHAN           DMA_CHANNEL_0   // Set to 0xFF if no DMA channel will be used 0..7 for selected DMA channel
+#define USB_DMA_CHAN           0xFF//DMA_CHANNEL_0   // Set to 0xFF if no DMA channel will be used 0..7 for selected DMA channel
 
 // Controls whether the remote wakeup feature is supported by this device.
 // A value of 0x20 indicates that is it supported (this value is the mask for
@@ -133,6 +138,7 @@ extern "C"
 #define HID_CLASS  3
 #define MSC_CLASS  4
 #define PHDC_CLASS 5
+#define VENDOR_CLASS 0xFF
 
 #define MAX_PACKET_SIZE   0x40              // Max size of the USB packets.
 
@@ -140,7 +146,7 @@ extern "C"
 // DESCRIPTOR CONSTANTS
 //***********************************************************************************************
 #define SIZEOF_DEVICE_DESCRIPTOR  0x12
-#define MAX_STRING_DESCRIPTOR_INDEX 5
+#define MAX_STRING_DESCRIPTOR_INDEX 6
 //#define SIZEOF_REPORT_DESCRIPTOR  36
 //#define USBHID_REPORT_LENGTH      64  // length of whole HID report (including Report ID)
 #define CONFIG_STRING_INDEX       4
@@ -323,6 +329,30 @@ struct abromConfigurationDescriptorMsc
     uint8_t out_binterval;                       // bInterval in ms
 };
 
+/**************************************WPAN descriptor structure *************************/
+struct abromConfigurationDescriptorWpan
+{
+// INTERFACE DESCRIPTOR (9 bytes)
+    uint8_t sizeof_interface_descriptor;         // Desc Length
+    uint8_t desc_type_interface;                 // DescriptorType
+    uint8_t interface_number_hid;                // Interface number
+    uint8_t balternatesetting;                   // Any alternate settings if supported
+    uint8_t bnumendpoints;                       // Number of end points required
+    uint8_t binterfaceclass;                     // Class ID
+    uint8_t binterfacesubclass;                  // Sub class ID
+    uint8_t binterfaceprotocol;                  // Protocol
+    uint8_t intf_string_index;                   // String Index
+
+// input end point descriptor (7 bytes)
+    uint8_t size_inp_endpoint_descriptor;        // End point desc size
+    uint8_t desc_type_inp_endpoint;              // Desc type
+    uint8_t hid_inep_addr;                       // Input end point address
+    uint8_t ep_desc_attr_type_inp_int;           // Type of end point
+    uint8_t  inp_wmaxpacketsize1;                // Max packet size
+    uint8_t  inp_wmaxpacketsize2;
+    uint8_t inp_binterval;                       // bInterval in ms
+};
+
 /* Global structure having Generic,CDC,HID, MSC structures */
 struct  abromConfigurationDescriptorGroup
 {
@@ -343,6 +373,9 @@ struct  abromConfigurationDescriptorGroup
 #ifdef _PHDC_
 /* PDC descriptor structure */
     const struct abromConfigurationDescriptorPhdc stPhdc[PHDC_NUM_INTERFACES];
+#endif
+#ifdef _WPAN_
+    const struct abromConfigurationDescriptorWpan stWpan[WPAN_NUM_INTERFACES];
 #endif
 };
 
@@ -366,7 +399,7 @@ struct tUsbHandle
     uint16_t iep_Y_Buffer;             // Input  Y Buffer Addr 
 };
 
-extern const struct tUsbHandle stUsbHandle[CDC_NUM_INTERFACES + HID_NUM_INTERFACES + MSC_NUM_INTERFACES + PHDC_NUM_INTERFACES]; 
+extern const struct tUsbHandle stUsbHandle[CDC_NUM_INTERFACES + HID_NUM_INTERFACES + MSC_NUM_INTERFACES + PHDC_NUM_INTERFACES + WPAN_NUM_INTERFACES]; 
 extern const tDEVICE_REQUEST_COMPARE tUsbRequestList[];
 
 #ifdef __cplusplus

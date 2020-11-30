@@ -59,9 +59,15 @@
 #include "USB_API/USB_PHDC_API/UsbPHDC.h"
 #endif
 
+#ifdef _WPAN_
+#include "USB_API/USB_WPAN_API/UsbWpan.h"
+#endif
+
 //These variables are only example, they are not needed for stack
 extern volatile uint8_t bCDCDataReceived_event;    //data received event
 extern volatile uint8_t bCDCBreak_event;   //break event
+extern volatile uint8_t bWPANDataReceived_event;
+extern volatile uint8_t bUSBIE;
 
 /*
  * If this function gets executed, it's a sign that the output of the USB PLL has failed.
@@ -174,6 +180,27 @@ void USB_handlePLLStartedEvent(void)
 {
     // Unlike other events, these don't have a return value to wake main()
 }
+#endif
+
+#ifdef _WPAN_
+
+uint8_t USBWPAN_handleDataReceived(void)
+{
+    bWPANDataReceived_event = TRUE;
+    bUSBIE = USBIE;
+    USBIE = 0;
+
+    return (TRUE);
+}
+
+uint8_t USBWPAN_handleDataConsumed(void)
+{
+    bWPANDataReceived_event = FALSE;
+    USBIE = bUSBIE;
+
+    return (TRUE);
+}
+
 #endif
 
 #ifdef _CDC_

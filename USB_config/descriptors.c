@@ -51,9 +51,9 @@ uint8_t const abromDeviceDescriptor[SIZEOF_DEVICE_DESCRIPTOR] = {
     SIZEOF_DEVICE_DESCRIPTOR,               // Length of this descriptor
     DESC_TYPE_DEVICE,                       // Type code of this descriptor
     0x00, 0x02,                             // Release of USB spec
-    0x02,                                   // Device's base class code
-    0x00,                                   // Device's sub class code
-    0x00,                                   // Device's protocol type code
+    0xef,                                   // Device's base class code
+    0x02,                                   // Device's sub class code
+    0x01,                                   // Device's protocol type code
     EP0_PACKET_SIZE,                        // End point 0's packet size
     USB_VID&0xFF, USB_VID>>8,               // Vendor ID for device, TI=0x0451
                                             // You can order your own VID at www.usb.org"
@@ -164,9 +164,34 @@ const struct abromConfigurationDescriptorGroup abromConfigurationDescriptorGroup
         }
 
         /* end CDC[0]*/
-    }    /******************************************************* end of CDC**************************************/
+        /******************************************************* end of CDC**************************************/
 
-    
+    },
+
+    /* start WPAN[0] */
+    {
+        {
+
+        //INTERFACE DESCRIPTOR (9 bytes)
+        0x09,                              // bLength: Interface Descriptor size
+        DESC_TYPE_INTERFACE,               // bDescriptorType: Interface
+        WPAN0_INTERFACE,                   // bInterfaceNumber
+        0x00,                              // bAlternateSetting: Alternate setting
+        0x01,                              // bNumEndpoints: Three endpoints used
+        0xff,                              // bInterfaceClass: Communication Interface Class
+        0x00,                              // bInterfaceSubClass: Abstract Control Model
+        0x00,                              // bInterfaceProtocol: Common AT commands
+        INTF_STRING_INDEX + 1,             // iInterface:
+
+        //EndPoint Descriptor for Input endpoint
+        SIZEOF_ENDPOINT_DESCRIPTOR,         // bLength: Endpoint Descriptor size
+        DESC_TYPE_ENDPOINT,                 // bDescriptorType: Endpoint
+        WPAN0_INEP_ADDR,                    // bEndpointAddress: (IN?)
+        EP_DESC_ATTR_TYPE_BULK,             // bmAttributes: Bulk
+        0x40, 0x00,                         // wMaxPacketSize, 64 bytes
+        0x00                                // bInterval: ignored for bulk transfer
+        }
+    }
         
             
 };
@@ -192,13 +217,11 @@ uint8_t const abromStringDescriptor[] = {
 
     // String index2, Product
 
-    61,        // Length of this string descriptor
+    28,        // Length of this string descriptor
     3,        // bDescriptorType
     'B',0x00,'e',0x00,'a',0x00,'g',0x00,'l',0x00,'e',0x00,
     'C',0x00,'o',0x00,'n',0x00,'n',0x00,'e',0x00,'c',0x00,
-    't',0x00,' ',0x00,'U',0x00,'S',0x00,'B',0x00,' ',0x00,
-    'U',0x00,'A',0x00,'R',0x00,'T',0x00,' ',0x00,'B',0x00,
-    'r',0x00,'i',0x00,'d',0x00,'g',0x00,'e',0x00,
+    't',0x00,
 
     // String index3, Serial Number
 
@@ -221,6 +244,12 @@ uint8_t const abromStringDescriptor[] = {
     'l',0x00,' ',0x00,'C',0x00,'O',0x00,'M',0x00,' ',0x00,
     'P',0x00,'o',0x00,'r',0x00,'t',0x00,' ',0x00,'(',0x00,
     'C',0x00,'D',0x00,'C',0x00,')',0x00,
+
+    // String index6, Interface String
+    24,        // Length of this string descriptor
+    3,        // bDescriptorType
+    'W',0x00,'P',0x00,'A',0x00,'N',0x00,' ',0x00,'B',0x00,
+    'e',0x00,'a',0x00,'g',0x00,'l',0x00,'e',0x00,
 };
 
 
@@ -231,19 +260,27 @@ const struct tUsbHandle stUsbHandle[]=
     {
         CDC0_INEP_ADDR,
         CDC0_OUTEP_ADDR,
-        1,
+        1, //EP2?
         CDC_CLASS,
-        IEP1_X_BUFFER_ADDRESS,
-        IEP1_Y_BUFFER_ADDRESS,
+        IEP3_X_BUFFER_ADDRESS,
+        IEP3_Y_BUFFER_ADDRESS,
         OEP2_X_BUFFER_ADDRESS,
         OEP2_Y_BUFFER_ADDRESS,
         IEP2_X_BUFFER_ADDRESS,
         IEP2_Y_BUFFER_ADDRESS
+    },
+    {
+        WPAN0_INEP_ADDR,
+        0,
+        0, //EP1?
+        0xFF, //Class Vendor
+        0,
+        0,
+        0,
+        0,
+        IEP1_X_BUFFER_ADDRESS,
+        IEP1_Y_BUFFER_ADDRESS
     }
-
-    
-        
-            
 };
 
 //-------------DEVICE REQUEST LIST---------------------------------------------
