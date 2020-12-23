@@ -285,6 +285,26 @@ int16_t WpanToHostFromBuffer (uint8_t intfNum)
     return (bWakeUp);
 }
 
+uint8_t USBWPAN_abortSend (uint16_t* size, uint8_t intfNum)
+{
+    uint8_t edbIndex;
+    uint16_t state;
+
+    edbIndex = stUsbHandle[intfNum].edb_Index;
+
+    state = usbDisableInEndpointInterrupt(edbIndex);                                                         //disable interrupts - atomic operation
+
+    *size =
+        (WpanWriteCtrl[INTFNUM_OFFSET(intfNum)].nBytesToSend -
+         WpanWriteCtrl[INTFNUM_OFFSET(intfNum)].nBytesToSendLeft);
+    WpanWriteCtrl[INTFNUM_OFFSET(intfNum)].nBytesToSend = 0;
+    WpanWriteCtrl[INTFNUM_OFFSET(intfNum)].nBytesToSendLeft = 0;
+
+    usbRestoreInEndpointInterrupt(state);
+    return (USB_SUCCEED);
+}
+
+
 uint8_t USBWPAN_sendData (const uint8_t* data, uint16_t size, uint8_t intfNum)
 {
     uint8_t edbIndex;

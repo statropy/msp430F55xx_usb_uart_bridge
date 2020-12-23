@@ -115,6 +115,7 @@ void poll_hdlc(int reset)
     uint8_t CRC_DEBUG_ERROR = 0;
 #endif
     uint16_t crc_check = 0;
+    uint16_t abort_size = 0;
 
     if (reset) {
         inEsc = FALSE;
@@ -125,16 +126,6 @@ void poll_hdlc(int reset)
     }
 
     while(!bWPANDataReceived_event && !RINGBUF_empty(&uartRing)) {
-        if(currentAddress == ADDRESS_WPAN) {
-            if(USBWPAN_getInterfaceStatus(WPAN0_INTFNUM) & USBWPAN_WAITING_FOR_SEND) {
-                return;
-            }
-        } else if(currentAddress == ADDRESS_CDC) {
-            if(USBCDC_getInterfaceStatus(CDC0_INTFNUM,&bytesSent,&bytesReceived) & USBCDC_WAITING_FOR_SEND) {
-                return;
-            }
-        }
-
         uint8_t c = RINGBUF_pop_unsafe(&uartRing);
         
         if(c == HDLC_FRAME) {
@@ -145,7 +136,7 @@ void poll_hdlc(int reset)
                 CRC_setSeed(CRC_BASE, 0xffff);
                 CRC_set8BitData(CRC_BASE, currentAddress);
                 for(int i=0; i<currentOffset; i++) {
-                    CRC_set8BitData(CRC_BASE, rxBuffer[i]);
+                    CRC_set8BitData(CRC_BASE, txBuffer[i]);
                 }
                 crc_check = CRC_getResultBitsReversed(CRC_BASE);
 #endif
@@ -156,16 +147,22 @@ void poll_hdlc(int reset)
                 } else {
                     rxState = STATE_HDLC;
 
-                    if((rxBuffer[0] & 1) == 0) {
+                    if((txBuffer[0] & 1) == 0) {
                         //I-Frame, send S-Frame ACK
-                        USBWPAN_sendAck(currentAddress, (rxBuffer[0] >> 1) & 0x7);
+                        USBWPAN_sendAck(currentAddress, (txBuffer[0] >> 1) & 0x7);
                     }
 
                     if(currentAddress == ADDRESS_WPAN) {
-                        USBWPAN_sendData(rxBuffer+1, currentOffset-3, WPAN0_INTFNUM);
+                        if(USBWPAN_getInterfaceStatus(WPAN0_INTFNUM) & USBWPAN_WAITING_FOR_SEND) {
+                            USBWPAN_abortSend(&abort_size, WPAN0_INTFNUM);
+                        }
+                        USBWPAN_sendData(txBuffer+1, currentOffset-3, WPAN0_INTFNUM);
                     }
                     else if(currentAddress == ADDRESS_CDC) {
-                        USBCDC_sendData(rxBuffer+1, currentOffset - 3, CDC0_INTFNUM);
+                        if(USBCDC_getInterfaceStatus(CDC0_INTFNUM,&bytesSent,&bytesReceived) & USBCDC_WAITING_FOR_SEND) {
+                            USBCDC_abortSend(&abort_size, CDC0_INTFNUM);
+                        }
+                        USBCDC_sendData(txBuffer+1, currentOffset - 3, CDC0_INTFNUM);
                     }
                 }
             }
@@ -212,7 +209,7 @@ void poll_hdlc(int reset)
                     return;
                 }
                 else if(currentOffset < BUFFER_SIZE) {
-                    rxBuffer[currentOffset] = c;
+                    txBuffer[currentOffset] = c;
                     currentOffset++;
                 } else {
                     //buffer overflow

@@ -103,6 +103,7 @@ uint8_t USBWPAN_handleDataConsumed(void);
 
 uint8_t USBWPAN_getInterfaceStatus(uint8_t intfNum);
 uint8_t USBWPAN_sendData(const uint8_t* data, uint16_t size, uint8_t intfNum);
+uint8_t USBWPAN_abortSend (uint16_t* size, uint8_t intfNum);
 
 void USBWPAN_sendPacket(void);
 void USBWPAN_sendAck(uint8_t address, uint8_t send_seq);
